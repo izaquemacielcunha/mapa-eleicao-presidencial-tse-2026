@@ -43,3 +43,7 @@ ENV/
 build/
 dist/
 *.egg-info/
+
+# macOS
+.DS_Store
+**/.DS_Store
