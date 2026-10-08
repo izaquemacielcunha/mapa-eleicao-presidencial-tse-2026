@@ -62,7 +62,7 @@ public class ExternalServiceImpl {
         return extrairMunicipio(responseBody, codigoMunicipal);
     }
 
-    public Optional<Metadados> callZonaSecaoInfos(String url) {
+    public Optional<Metadados> callZonaSecaoInfos(String url) throws Exception {
         if (Objects.isNull(url) || url.trim().isEmpty()) {
             return Optional.empty();
         }
