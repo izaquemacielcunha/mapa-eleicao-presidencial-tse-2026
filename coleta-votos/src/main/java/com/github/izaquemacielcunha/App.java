@@ -1,16 +1,9 @@
 package com.github.izaquemacielcunha;
 
-import java.util.List;
-import java.util.Optional;
-
 import com.github.izaquemacielcunha.dependencyinjection.ApplicationComponent;
 import com.github.izaquemacielcunha.dependencyinjection.DaggerApplicationComponent;
-import com.github.izaquemacielcunha.model.Abrangencia;
-import com.github.izaquemacielcunha.model.Municipio;
-import com.github.izaquemacielcunha.model.urnas.Metadados;
 import com.github.izaquemacielcunha.service.ExternalServiceImpl;
-import com.github.izaquemacielcunha.service.csv.CsvEnriquecedorService;
-import com.github.izaquemacielcunha.service.csv.CsvService;
+import com.github.izaquemacielcunha.service.downloader.BoletimUrnaService;
 import tools.jackson.dataformat.csv.CsvMapper;
 
 public class App {
@@ -20,7 +13,7 @@ public class App {
 
         ExternalServiceImpl externalService = new ExternalServiceImpl(component.httpClient(), component.rateLimiter(), component.objectMapper());
 
-        //Fase 1 - pega infos municipios e salvar em csv ✅
+        //Fase 1 - Pegar infos municipios e salvar em csv ✅
 //        String url = "https://resultados.tse.jus.br/oficial/ele2026/arquivo-urna/3220/config/pr/pr-p003220-cs.json";
 //        String codMun = "75353";
 //        Optional<Municipio> resultado = externalService.callMunicipioConfig(url, codMun);
@@ -32,10 +25,14 @@ public class App {
 //        CsvEnriquecedorService csvEnriquecedorService = new CsvEnriquecedorService(externalService, new CsvMapper());
 //        csvEnriquecedorService.enriquecer();
 
-        //Fase 3 - Baixar boletins das urnas
+        //Fase 3 - Baixar boletins das urnas ✅
+//        BoletimUrnaService boletimUrnaDownloader = new BoletimUrnaService(externalService, new CsvMapper());
+//        boletimUrnaDownloader.download();
 
+        //Fase 4 - Script python contabilizar votos
 
-        //Fase 3
+        //Fase 5  - Merge votos com csv enriquecido
+
     }
 
 }// end of class

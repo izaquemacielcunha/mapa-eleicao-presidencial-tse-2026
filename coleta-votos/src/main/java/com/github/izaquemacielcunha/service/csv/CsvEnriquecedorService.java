@@ -21,6 +21,7 @@ import com.github.izaquemacielcunha.service.ExternalServiceImpl;
 @Singleton
 public class CsvEnriquecedorService {
     private static final String BOLETIM_URNA = "bu";
+    private static final String INOPERANTE_AGREGADA = "inoperante/agregada";
 
     private final ExternalServiceImpl externalService;
     private final CsvMapper mapper;
@@ -66,8 +67,8 @@ public class CsvEnriquecedorService {
                         linha.nomeMunicipio(),
                         linha.numeroZona(),
                         linha.numeroSecao(),
-                        "inoperante/agregada",
-                        "inoperante/agregada");
+                        INOPERANTE_AGREGADA,
+                        INOPERANTE_AGREGADA);
             }
             catch (Exception e) {
                 throw new RuntimeException("[enriquecer] - Erro ao enriquecer csv. Linha: " + linha, e);
