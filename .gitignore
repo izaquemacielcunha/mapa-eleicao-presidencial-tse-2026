@@ -11,6 +11,8 @@
 .mtj.tmp/
 
 # Package Files #
+**/boletins-urnas/
+boletins-urnas/
 target/
 **/target/
 *.jar
