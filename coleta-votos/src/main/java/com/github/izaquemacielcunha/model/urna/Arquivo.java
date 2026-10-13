@@ -1,4 +1,4 @@
-package com.github.izaquemacielcunha.model.urnas;
+package com.github.izaquemacielcunha.model.urna;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
