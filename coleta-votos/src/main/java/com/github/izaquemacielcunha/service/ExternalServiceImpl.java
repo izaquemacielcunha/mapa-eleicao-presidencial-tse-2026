@@ -15,7 +15,7 @@ import java.net.http.HttpResponse;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
-import com.github.izaquemacielcunha.model.urnas.Metadados;
+import com.github.izaquemacielcunha.model.urna.Metadados;
 import com.github.izaquemacielcunha.model.Municipio;
 import io.github.resilience4j.ratelimiter.RateLimiter;
 

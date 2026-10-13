@@ -15,7 +15,7 @@ import tools.jackson.dataformat.csv.CsvSchema;
 
 import com.github.izaquemacielcunha.model.csv.LinhaEnriquecidaCsv;
 import com.github.izaquemacielcunha.model.csv.LinhaExportacaoCsv;
-import com.github.izaquemacielcunha.model.urnas.Metadados;
+import com.github.izaquemacielcunha.model.urna.Metadados;
 import com.github.izaquemacielcunha.service.ExternalServiceImpl;
 
 @Singleton
