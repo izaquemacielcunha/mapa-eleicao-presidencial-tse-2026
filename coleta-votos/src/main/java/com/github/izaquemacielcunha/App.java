@@ -2,9 +2,8 @@ package com.github.izaquemacielcunha;
 
 import com.github.izaquemacielcunha.dependencyinjection.ApplicationComponent;
 import com.github.izaquemacielcunha.dependencyinjection.DaggerApplicationComponent;
+import com.github.izaquemacielcunha.model.tse.asn1.*;
 import com.github.izaquemacielcunha.service.ExternalServiceImpl;
-import com.github.izaquemacielcunha.service.downloader.BoletimUrnaService;
-import tools.jackson.dataformat.csv.CsvMapper;
 
 public class App {
 
@@ -29,10 +28,16 @@ public class App {
 //        BoletimUrnaService boletimUrnaDownloader = new BoletimUrnaService(externalService, new CsvMapper());
 //        boletimUrnaDownloader.download();
 
-        //Fase 4 - Script python contabilizar votos
+        //Fase 4 - Contabilizar votos
+//        BoletimUrnaService boletimUrnaService = new BoletimUrnaService();
+//        boletimUrnaService
+//                .extrairResumoVotacao("boletins-urnas/o03220pr7535301780729-bu.dat", "o03220pr7535300010051-bu.dat")
+//                .forEach(IO::println);
 
         //Fase 5  - Merge votos com csv enriquecido
 
+
     }
+
 
 }// end of class
