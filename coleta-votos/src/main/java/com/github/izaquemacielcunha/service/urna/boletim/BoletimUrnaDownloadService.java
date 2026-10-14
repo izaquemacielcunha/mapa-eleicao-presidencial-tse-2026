@@ -11,7 +11,7 @@ import tools.jackson.databind.MappingIterator;
 import tools.jackson.dataformat.csv.CsvMapper;
 import tools.jackson.dataformat.csv.CsvSchema;
 
-import com.github.izaquemacielcunha.model.csv.LinhaEnriquecidaCsv;
+import com.github.izaquemacielcunha.model.csv.LinhaExportacaoEnriquecidaCsv;
 import com.github.izaquemacielcunha.service.ExternalServiceImpl;
 
 
@@ -32,17 +32,17 @@ public class BoletimUrnaDownloadService {
 
         long start = System.nanoTime();
 
-        CsvSchema schemaLeitura = mapper.schemaFor(LinhaEnriquecidaCsv.class).withHeader();
-        MappingIterator<LinhaEnriquecidaCsv> iterador = mapper.readerFor(LinhaEnriquecidaCsv.class)
+        CsvSchema schemaLeitura = mapper.schemaFor(LinhaExportacaoEnriquecidaCsv.class).withHeader();
+        MappingIterator<LinhaExportacaoEnriquecidaCsv> iterador = mapper.readerFor(LinhaExportacaoEnriquecidaCsv.class)
                 .with(schemaLeitura)
                 .readValues(new File("arquivo-enriquecido.csv"));
 
-        List<LinhaEnriquecidaCsv> linhasOriginais = iterador.readAll();
+        List<LinhaExportacaoEnriquecidaCsv> linhasOriginais = iterador.readAll();
 
-        linhasOriginais.parallelStream().forEach(linhaEnriquecidaCsv -> {
+        linhasOriginais.parallelStream().forEach(linhaExportacaoEnriquecidaCsv -> {
             try {
-                if (!linhaEnriquecidaCsv.boletimUrna().equalsIgnoreCase(INOPERANTE_AGREGADA)) {
-                    externalService.baixarArquivoBoletimUrnaDat(montarUrl(linhaEnriquecidaCsv), Path.of("boletins-urnas"));
+                if (!linhaExportacaoEnriquecidaCsv.boletimUrna().equalsIgnoreCase(INOPERANTE_AGREGADA)) {
+                    externalService.baixarArquivoBoletimUrnaDat(montarUrl(linhaExportacaoEnriquecidaCsv), Path.of("boletins-urnas"));
                 }
             }
             catch (Exception e) {
@@ -56,7 +56,7 @@ public class BoletimUrnaDownloadService {
         System.out.println("Download concluído com sucesso! Tempo gasto: " + (timeElapsed / 1_000_000_000) + " s");
     }
 
-    private String montarUrl(LinhaEnriquecidaCsv linha) {
+    private String montarUrl(LinhaExportacaoEnriquecidaCsv linha) {
         String baseUrl = "https://resultados.tse.jus.br/oficial/ele2026/arquivo-urna/3220/dados/%s/%s/%s/%s/%s/%s";
 
         return String.format(baseUrl, linha.unidadeFederativa().toLowerCase(), linha.codigoMunicipio(),

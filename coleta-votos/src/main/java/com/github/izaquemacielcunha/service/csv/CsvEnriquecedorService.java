@@ -13,7 +13,7 @@ import tools.jackson.databind.MappingIterator;
 import tools.jackson.dataformat.csv.CsvMapper;
 import tools.jackson.dataformat.csv.CsvSchema;
 
-import com.github.izaquemacielcunha.model.csv.LinhaEnriquecidaCsv;
+import com.github.izaquemacielcunha.model.csv.LinhaExportacaoEnriquecidaCsv;
 import com.github.izaquemacielcunha.model.csv.LinhaExportacaoCsv;
 import com.github.izaquemacielcunha.model.urna.Metadados;
 import com.github.izaquemacielcunha.service.ExternalServiceImpl;
@@ -43,11 +43,11 @@ public class CsvEnriquecedorService {
 
         List<LinhaExportacaoCsv> linhasOriginais = iterador.readAll();
 
-        List<LinhaEnriquecidaCsv> linhasEnriquecidas = linhasOriginais.parallelStream().map(linha -> {
+        List<LinhaExportacaoEnriquecidaCsv> linhasEnriquecidas = linhasOriginais.parallelStream().map(linha -> {
             try {
                 Optional<Metadados> dados = externalService.callZonaSecaoInfos(montarUrl(linha));
                 if (Objects.nonNull(dados.get().hashes())) {
-                    return new LinhaEnriquecidaCsv(
+                    return new LinhaExportacaoEnriquecidaCsv(
                             linha.unidadeFederativa(),
                             linha.codigoMunicipio(),
                             linha.nomeMunicipio(),
@@ -61,7 +61,7 @@ public class CsvEnriquecedorService {
                                     .get().nome()
                     );
                 }
-                return new LinhaEnriquecidaCsv(
+                return new LinhaExportacaoEnriquecidaCsv(
                         linha.unidadeFederativa(),
                         linha.codigoMunicipio(),
                         linha.nomeMunicipio(),
@@ -75,7 +75,7 @@ public class CsvEnriquecedorService {
             }
         }).collect(Collectors.toList());
 
-        CsvSchema schemaEscrita = mapper.schemaFor(LinhaEnriquecidaCsv.class).withHeader();
+        CsvSchema schemaEscrita = mapper.schemaFor(LinhaExportacaoEnriquecidaCsv.class).withHeader();
         mapper.writer(schemaEscrita).writeValue(new File("arquivo-enriquecido.csv"), linhasEnriquecidas);
 
         long finish = System.nanoTime();
