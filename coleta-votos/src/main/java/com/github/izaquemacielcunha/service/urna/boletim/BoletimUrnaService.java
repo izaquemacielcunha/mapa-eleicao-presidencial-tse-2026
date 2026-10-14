@@ -1,9 +1,6 @@
 package com.github.izaquemacielcunha.service.urna.boletim;
 
-import static java.util.Optional.empty;
-
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -26,6 +23,7 @@ public class BoletimUrnaService {
     private static final int VOTO_NOMINAL = 1;
     private static final int VOTO_BRANCO = 2;
     private static final int VOTO_NULO = 3;
+    private static final String VOTO_NULO_PABLO_MARCAL = "28";
 
     public BoletimUrnaService() {}
 
@@ -42,6 +40,19 @@ public class BoletimUrnaService {
 
         }
         return List.of();
+    }
+
+    public List<String> listaArquivosBoletinsUrnas(String nomeDiretorio) {
+        File diretorio = new File(nomeDiretorio);
+
+        List<String> listaArquivos = List.of();
+        if (diretorio.exists()) {
+            listaArquivos =  Stream.of(diretorio.listFiles()).parallel()
+                    .filter(file -> !file.isDirectory())
+                    .map(File::getPath)
+                    .toList();
+        }
+        return listaArquivos;
     }
 
     private Stream<ResultadoVotacaoPorEleicao> obterEleicoes(EntidadeBoletimUrna bu) {
@@ -78,18 +89,19 @@ public class BoletimUrnaService {
             case VOTO_NOMINAL -> formatarCandidatoNominal(voto.getIdentificacaoVotavel());
             case VOTO_BRANCO -> "BRANCO";
             case VOTO_NULO -> "NULO";
-            default -> "OUTROS (Tipo " + tipoVoto + ")";
+            default -> String.valueOf(tipoVoto);
         };
 
         return new ResumoVotacao(candidato, qtdVotos, idBoletim);
     }
 
     private String formatarCandidatoNominal(IdentificacaoVotavel ident) {
-        if (ident == null) return "N/A";
+        if (ident == null || ident.getCodigo() == null) {
+            return "N/A";
+        }
 
-        String codigo = ident.getCodigo() != null ? ident.getCodigo().toString() : "N/A";
-
-        return codigo;
+        String codigo = ident.getCodigo().toString();
+        return VOTO_NULO_PABLO_MARCAL.equals(codigo) ? "NULO" : codigo;
     }
 
     private <T> Stream<T> nullSafeStream(Collection<T> collection) {
@@ -97,6 +109,10 @@ public class BoletimUrnaService {
     }
 
     private Optional<EntidadeBoletimUrna> desenveloparBoletimUrna(String filePath) throws Exception {
+        if (filePath == null || filePath.trim().isEmpty() || !filePath.endsWith(".dat")) {
+            return Optional.empty();
+        }
+
         File arquivoDat = new File(filePath);
 
         if (!arquivoDat.exists()) {
@@ -114,22 +130,11 @@ public class BoletimUrnaService {
                 return Optional.of(boletimUrna);
             }
             catch (Exception ex) {
-                throw  new RuntimeException(ex);
+                throw new RuntimeException(ex);
             }
         }
         catch (Exception ex) {
-            throw  new RuntimeException(ex);
-        }
-    }
-
-    public void arquivosDiretorio(String nomeDiretorio) {
-        File diretorio = new File(nomeDiretorio);
-        if (diretorio.exists()) {
-            List<String> listaArquivos =  Stream.of(diretorio.listFiles())
-                    .filter(file -> !file.isDirectory())
-                    .map(File::getPath)
-                    .toList();
-            listaArquivos.forEach(System.out::println);
+            throw new RuntimeException(ex);
         }
     }
 
