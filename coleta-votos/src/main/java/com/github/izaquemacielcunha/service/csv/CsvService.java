@@ -28,7 +28,7 @@ public class CsvService {
         CsvSchema schema = mapper.schemaFor(LinhaMuncipio.class)
                 .withHeader();
 
-        mapper.writer(schema).writeValue(new File("temp.csv"), linhas);
+        mapper.writer(schema).writeValue(new File("temp-files/temp.csv"), linhas);
     }
 
     private List<LinhaMuncipio> converterParaLinhas(List<Abrangencia> abrangencias) {

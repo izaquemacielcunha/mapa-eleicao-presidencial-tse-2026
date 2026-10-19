@@ -40,7 +40,7 @@ public class CsvEnriquecedorService {
         CsvSchema schemaLeitura = mapper.schemaFor(LinhaMuncipio.class).withHeader();
         MappingIterator<LinhaMuncipio> iterador = mapper.readerFor(LinhaMuncipio.class)
                 .with(schemaLeitura)
-                .readValues(new File("temp.csv"));
+                .readValues(new File("temp-files/temp.csv"));
 
         List<LinhaMuncipio> linhasOriginais = iterador.readAll();
 
@@ -77,7 +77,7 @@ public class CsvEnriquecedorService {
         }).collect(Collectors.toList());
 
         CsvSchema schemaEscrita = mapper.schemaFor(LinhaMunicipioEnriquecida.class).withHeader();
-        mapper.writer(schemaEscrita).writeValue(new File("arquivo-enriquecido.csv"), linhasEnriquecidas);
+        mapper.writer(schemaEscrita).writeValue(new File("temp-files/arquivo-enriquecido.csv"), linhasEnriquecidas);
 
         long finish = System.nanoTime();
         long timeElapsed = finish - start;

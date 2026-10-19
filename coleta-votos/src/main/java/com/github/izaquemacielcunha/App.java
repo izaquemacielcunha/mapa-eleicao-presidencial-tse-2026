@@ -30,8 +30,6 @@ public class App {
 
     void main(String[] args) throws Exception {
 
-        /* FIM CAPITAIS */
-
         ApplicationComponent component = DaggerApplicationComponent.create();
         CsvMapper csvMapper = component.csvMapper();
 
@@ -42,8 +40,8 @@ public class App {
         );
 
         //Fase 1 - Pegar infos municipios e salvar em csv ✅
-        String uf = "MS";
-        String codMun = "90514";
+        String uf = "PR";
+        String codMun = "75353";
         String url = "https://resultados.tse.jus.br/oficial/ele2026/arquivo-urna/3220/config/"+uf.toLowerCase()+"/"+uf.toLowerCase()+"-p003220-cs.json";
         Optional<Municipio> resultado = externalService.callMunicipioConfig(url, codMun);
         Abrangencia abrangencia = new Abrangencia(uf, resultado.get());
@@ -60,7 +58,7 @@ public class App {
         //Fase 4 - Contabilizar votos e salvar ✅
         CsvBoletimUrnaService csvBoletimUrnaService = new CsvBoletimUrnaService(new CsvMapper());
         BoletimUrnaService boletimUrnaService = new BoletimUrnaService();
-        List<String> listaBoletins = boletimUrnaService.listaArquivosBoletinsUrnas("boletins-urnas");
+        List<String> listaBoletins = boletimUrnaService.listaArquivosBoletinsUrnas("temp-files/boletins-urnas");
         List<ResumoVotacao> votacao = listaBoletins.stream()
                 .parallel()
                 .flatMap(boletim -> {
@@ -82,7 +80,7 @@ public class App {
         CsvSchema schemaMesclado = csvMapper.schemaFor(LinhaMescladaMunicipioBoletim.class).withHeader();
 
         Map<String, LinhaMunicipioEnriquecida> urnasMap = new HashMap<>();
-        File fileUrnas = new File("arquivo-enriquecido.csv");
+        File fileUrnas = new File("temp-files/arquivo-enriquecido.csv");
 
         try (MappingIterator<LinhaMunicipioEnriquecida> itUrnas = csvMapper.readerFor(LinhaMunicipioEnriquecida.class)
                 .with(schemaUrnas)
@@ -94,8 +92,8 @@ public class App {
             }
         }
 
-        File fileVotos = new File("arquivo-boletim-urna.csv");
-        File outputFile = new File("resultado-mesclado.csv");
+        File fileVotos = new File("temp-files/arquivo-boletim-urna.csv");
+        File outputFile = new File("temp-files/resultado-mesclado.csv");
 
         try (MappingIterator<LinhaBoletimUrna> itVotos = csvMapper.readerFor(LinhaBoletimUrna.class).with(schemaVotos).readValues(fileVotos);
              SequenceWriter writer = csvMapper.writer(schemaMesclado).writeValues(outputFile)) {
@@ -141,7 +139,7 @@ public class App {
 
         // 1. Carregar Coordenadas APENAS do município alvo na memória
         Map<String, LinhaMunicipioCoordenadas> coordenadasMap = new HashMap<>();
-        try (BufferedReader readerCoords = Files.newBufferedReader(Paths.get("eleitorado_local_votacao_2026_" + uf +".csv"), Charset.forName("ISO-8859-1"));
+        try (BufferedReader readerCoords = Files.newBufferedReader(Paths.get("temp-files/eleitorado_local_votacao_2026_" + uf +".csv"), Charset.forName("ISO-8859-1"));
              MappingIterator<LinhaMunicipioCoordenadas> itCoords = csvMapper.readerFor(LinhaMunicipioCoordenadas.class)
                      .with(schemaCoordenadas)
                      .readValues(readerCoords)) {
@@ -160,7 +158,7 @@ public class App {
         // 2. Iterar sobre a sua planilha já mesclada e adicionar as coordenadas
         try (MappingIterator<LinhaMescladaMunicipioBoletim> itMesclaBase = csvMapper.readerFor(LinhaMescladaMunicipioBoletim.class)
                 .with(schemaMesclaBase)
-                .readValues(new File("resultado-mesclado.csv")); // Seu arquivo atual
+                .readValues(new File("temp-files/resultado-mesclado.csv")); // Seu arquivo atual
              SequenceWriter writer = csvMapper.writer(schemaFinal)
                      .writeValues(new File("carto-dataset-final-eleic-presi-2026-1-turn-" + uf.toLowerCase() + ".csv"))) {
 

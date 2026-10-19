@@ -35,14 +35,14 @@ public class BoletimUrnaDownloadService {
         CsvSchema schemaLeitura = mapper.schemaFor(LinhaMunicipioEnriquecida.class).withHeader();
         MappingIterator<LinhaMunicipioEnriquecida> iterador = mapper.readerFor(LinhaMunicipioEnriquecida.class)
                 .with(schemaLeitura)
-                .readValues(new File("arquivo-enriquecido.csv"));
+                .readValues(new File("temp-files/arquivo-enriquecido.csv"));
 
         List<LinhaMunicipioEnriquecida> linhasOriginais = iterador.readAll();
 
         linhasOriginais.parallelStream().forEach(linhaExportacaoEnriquecidaCsv -> {
             try {
                 if (!linhaExportacaoEnriquecidaCsv.boletimUrna().equalsIgnoreCase(INOPERANTE_AGREGADA)) {
-                    externalService.baixarArquivoBoletimUrnaDat(montarUrl(linhaExportacaoEnriquecidaCsv), Path.of("boletins-urnas"));
+                    externalService.baixarArquivoBoletimUrnaDat(montarUrl(linhaExportacaoEnriquecidaCsv), Path.of("temp-files/boletins-urnas"));
                 }
             }
             catch (Exception e) {

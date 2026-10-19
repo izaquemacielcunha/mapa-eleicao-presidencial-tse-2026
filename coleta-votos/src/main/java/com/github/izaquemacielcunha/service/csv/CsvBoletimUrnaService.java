@@ -27,7 +27,7 @@ public class CsvBoletimUrnaService {
                 .toList();
 
         CsvSchema schemaEscrita = mapper.schemaFor(LinhaBoletimUrna.class).withHeader();
-        mapper.writer(schemaEscrita).writeValue(new File("arquivo-boletim-urna.csv"), linhasBoletins);
+        mapper.writer(schemaEscrita).writeValue(new File("temp-files/arquivo-boletim-urna.csv"), linhasBoletins);
     }
 
 }// end of class
