@@ -14,4 +14,10 @@ public record LinhaMescladaMunicipioBoletim(
         @JsonProperty("QTD_VOTOS") int votos,
         @JsonProperty("HASH") String hash,
         @JsonProperty("BOLETIM_URNA") String boletimUrna
-) { }// end of class
+) {
+    public String gerarChaveComposta() {
+        int zona = (numeroZona != null && !numeroZona.isBlank()) ? Integer.parseInt(numeroZona.trim()) : 0;
+        int secao = (numeroSecao != null && !numeroSecao.isBlank()) ? Integer.parseInt(numeroSecao.trim()) : 0;
+        return unidadeFederativa + "-" + codigoMunicipio + "-" + zona + "-" + secao;
+    }
+}

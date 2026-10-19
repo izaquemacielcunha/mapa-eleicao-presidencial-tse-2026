@@ -16,6 +16,8 @@ public record LinhaMunicipioCoordenadas(
         @JsonProperty("NM_LOCAL_VOTACAO") String localVotacao
 ) {
     public String gerarChaveComposta() {
-        return unidadeFederativa + "-" + codigoMunicipio + "-" + numeroZona + "-" + numeroSecao;
+        int zona = (numeroZona != null && !numeroZona.isBlank()) ? Integer.parseInt(numeroZona.trim()) : 0;
+        int secao = (numeroSecao != null && !numeroSecao.isBlank()) ? Integer.parseInt(numeroSecao.trim()) : 0;
+        return unidadeFederativa + "-" + codigoMunicipio + "-" + zona + "-" + secao;
     }
-}// end of class
+}

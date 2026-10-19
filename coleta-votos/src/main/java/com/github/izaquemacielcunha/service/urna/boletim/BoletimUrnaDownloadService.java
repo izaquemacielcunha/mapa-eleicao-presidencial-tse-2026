@@ -11,42 +11,58 @@ import tools.jackson.databind.MappingIterator;
 import tools.jackson.dataformat.csv.CsvMapper;
 import tools.jackson.dataformat.csv.CsvSchema;
 
+import com.github.izaquemacielcunha.config.EleicaoConfig;
 import com.github.izaquemacielcunha.model.csv.LinhaMunicipioEnriquecida;
-import com.github.izaquemacielcunha.service.ExternalServiceImpl;
-
+import com.github.izaquemacielcunha.service.ExternalService;
+import com.github.izaquemacielcunha.service.tse.TseUrlBuilder;
 
 @Singleton
 public class BoletimUrnaDownloadService {
     private static final String INOPERANTE_AGREGADA = "inoperante/agregada";
 
-    private final ExternalServiceImpl externalService;
+    private final ExternalService externalService;
     private final CsvMapper mapper;
+    private final TseUrlBuilder urlBuilder;
+    private final EleicaoConfig config;
 
     @Inject
-    public BoletimUrnaDownloadService(ExternalServiceImpl externalService, CsvMapper mapper) {
+    public BoletimUrnaDownloadService(
+            ExternalService externalService,
+            CsvMapper mapper,
+            TseUrlBuilder urlBuilder,
+            EleicaoConfig config
+    ) {
         this.externalService = externalService;
         this.mapper = mapper;
+        this.urlBuilder = urlBuilder;
+        this.config = config;
     }
 
     public void download() throws Exception {
+        download(config.arquivoEnriquecidoCsv(), config.diretorioBoletins());
+    }
 
+    public void download(File arquivoEnriquecido, Path diretorioDestino) throws Exception {
         long start = System.nanoTime();
 
         CsvSchema schemaLeitura = mapper.schemaFor(LinhaMunicipioEnriquecida.class).withHeader();
-        MappingIterator<LinhaMunicipioEnriquecida> iterador = mapper.readerFor(LinhaMunicipioEnriquecida.class)
+        List<LinhaMunicipioEnriquecida> linhasOriginais;
+        try (MappingIterator<LinhaMunicipioEnriquecida> iterador = mapper.readerFor(LinhaMunicipioEnriquecida.class)
                 .with(schemaLeitura)
-                .readValues(new File("temp-files/arquivo-enriquecido.csv"));
+                .readValues(arquivoEnriquecido)) {
+            linhasOriginais = iterador.readAll();
+        }
 
-        List<LinhaMunicipioEnriquecida> linhasOriginais = iterador.readAll();
-
-        linhasOriginais.parallelStream().forEach(linhaExportacaoEnriquecidaCsv -> {
+        linhasOriginais.parallelStream().forEach(linha -> {
             try {
-                if (!linhaExportacaoEnriquecidaCsv.boletimUrna().equalsIgnoreCase(INOPERANTE_AGREGADA)) {
-                    externalService.baixarArquivoBoletimUrnaDat(montarUrl(linhaExportacaoEnriquecidaCsv), Path.of("temp-files/boletins-urnas"));
+                if (!linha.boletimUrna().equalsIgnoreCase(INOPERANTE_AGREGADA)) {
+                    externalService.baixarArquivoBoletimUrnaDat(
+                            urlBuilder.buildUrlBoletimUrna(linha),
+                            diretorioDestino
+                    );
                 }
-            }
-            catch (Exception e) {
-                throw  new RuntimeException(e);
+            } catch (Exception e) {
+                throw new RuntimeException("Erro ao baixar boletim da urna: " + linha.boletimUrna(), e);
             }
         });
 
@@ -55,13 +71,4 @@ public class BoletimUrnaDownloadService {
 
         System.out.println("Download concluído com sucesso! Tempo gasto: " + (timeElapsed / 1_000_000_000) + " s");
     }
-
-    private String montarUrl(LinhaMunicipioEnriquecida linha) {
-        String baseUrl = "https://resultados.tse.jus.br/oficial/ele2026/arquivo-urna/3220/dados/%s/%s/%s/%s/%s/%s";
-
-        return String.format(baseUrl, linha.unidadeFederativa().toLowerCase(), linha.codigoMunicipio(),
-                linha.numeroZona(), linha.numeroSecao(), linha.hash(), linha.boletimUrna());
-    }
-
-
-}// end of class
+}

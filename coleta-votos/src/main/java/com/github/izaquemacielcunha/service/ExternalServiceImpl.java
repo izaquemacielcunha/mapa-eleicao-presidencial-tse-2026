@@ -24,9 +24,10 @@ import tools.jackson.core.JsonToken;
 import tools.jackson.databind.ObjectMapper;
 
 @Singleton
-public class ExternalServiceImpl {
+public class ExternalServiceImpl implements ExternalService {
     private static final String MUNICIPIO = "mu";
     private static final int SUCCESS = 200;
+    private static final int NOT_FOUND = 404;
 
     private final HttpClient httpClient;
     private final RateLimiter rateLimiter;
@@ -39,6 +40,7 @@ public class ExternalServiceImpl {
         this.mapper = mapper;
     }
 
+    @Override
     public Optional<Municipio> callMunicipioConfig(String url, String codigoMunicipal) throws Exception {
         if (Objects.isNull(url) || url.trim().isEmpty() || Objects.isNull(codigoMunicipal) || codigoMunicipal.trim().isEmpty()) {
             return Optional.empty();
@@ -51,21 +53,31 @@ public class ExternalServiceImpl {
                 .GET()
                 .build();
 
-        InputStream responseBody = RateLimiter.decorateSupplier(rateLimiter, () -> {
+        return RateLimiter.decorateSupplier(rateLimiter, () -> {
             try {
                 HttpResponse<InputStream> response = httpClient.send(
                         request,
                         HttpResponse.BodyHandlers.ofInputStream());
-                return response.body();
+
+                if (response.statusCode() == NOT_FOUND) {
+                    return Optional.<Municipio>empty();
+                }
+
+                if (response.statusCode() != SUCCESS) {
+                    throw new RuntimeException("Erro na resposta HTTP. Status: " + response.statusCode() + " - URL: " + request.uri());
+                }
+
+                try (InputStream body = response.body()) {
+                    return extrairMunicipio(body, codigoMunicipal);
+                }
             }
             catch (Exception e) {
-                throw new RuntimeException("[callMunicipioConfig] - Erro ao executar chamada HTTP", e);
+                throw new RuntimeException("[callMunicipioConfig] - Erro ao executar chamada HTTP: " + url, e);
             }
         }).get();
-
-        return extrairMunicipio(responseBody, codigoMunicipal);
     }
 
+    @Override
     public Optional<Metadados> callZonaSecaoInfos(String url) throws Exception {
         if (Objects.isNull(url) || url.trim().isEmpty()) {
             return Optional.empty();
@@ -78,21 +90,31 @@ public class ExternalServiceImpl {
                 .GET()
                 .build();
 
-        InputStream responseBody = RateLimiter.decorateSupplier(rateLimiter, () -> {
+        return RateLimiter.decorateSupplier(rateLimiter, () -> {
             try {
                 HttpResponse<InputStream> response = httpClient.send(
                         request,
                         HttpResponse.BodyHandlers.ofInputStream());
-                return response.body();
+
+                if (response.statusCode() == NOT_FOUND) {
+                    return Optional.<Metadados>empty();
+                }
+
+                if (response.statusCode() != SUCCESS) {
+                    throw new RuntimeException("Erro na resposta HTTP. Status: " + response.statusCode() + " - URL: " + request.uri());
+                }
+
+                try (InputStream body = response.body()) {
+                    return Optional.ofNullable(mapper.readValue(body, Metadados.class));
+                }
             }
             catch (Exception e) {
-                throw new RuntimeException("[callZonaSecaoInfos] - Erro ao executar chamada HTTP", e);
+                throw new RuntimeException("[callZonaSecaoInfos] - Erro ao executar chamada HTTP: " + url, e);
             }
         }).get();
-
-        return Optional.ofNullable(mapper.readValue(responseBody, Metadados.class));
     }
 
+    @Override
     public Optional<Path> baixarArquivoBoletimUrnaDat(String url, Path diretorioDestino) throws Exception {
         if (Objects.isNull(url) || url.trim().isEmpty() || Objects.isNull(diretorioDestino)) {
             return Optional.empty();
@@ -167,4 +189,4 @@ public class ExternalServiceImpl {
 
         return caminhoDestino;
     }
-}// end of class
+}

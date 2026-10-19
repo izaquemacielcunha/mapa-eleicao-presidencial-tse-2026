@@ -8,6 +8,9 @@ import jakarta.inject.Singleton;
 import dagger.Module;
 import dagger.Provides;
 
+import com.github.izaquemacielcunha.service.ExternalService;
+import com.github.izaquemacielcunha.service.ExternalServiceImpl;
+
 import io.github.resilience4j.ratelimiter.RateLimiter;
 import io.github.resilience4j.ratelimiter.RateLimiterConfig;
 
@@ -35,4 +38,10 @@ public class NetworkModule {
         return RateLimiter.of("api-limiter", config);
     }
 
-}// end of class
+    @Provides
+    @Singleton
+    public static ExternalService provideExternalService(ExternalServiceImpl impl) {
+        return impl;
+    }
+
+}

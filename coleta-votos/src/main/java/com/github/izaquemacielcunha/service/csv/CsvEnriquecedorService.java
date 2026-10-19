@@ -2,9 +2,7 @@ package com.github.izaquemacielcunha.service.csv;
 
 import java.io.File;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -14,9 +12,11 @@ import tools.jackson.dataformat.csv.CsvMapper;
 import tools.jackson.dataformat.csv.CsvSchema;
 
 import com.github.izaquemacielcunha.model.csv.LinhaMunicipioEnriquecida;
-import com.github.izaquemacielcunha.model.csv.LinhaMuncipio;
+import com.github.izaquemacielcunha.model.csv.LinhaMunicipio;
+import com.github.izaquemacielcunha.model.urna.Arquivo;
 import com.github.izaquemacielcunha.model.urna.Metadados;
-import com.github.izaquemacielcunha.service.ExternalServiceImpl;
+import com.github.izaquemacielcunha.service.ExternalService;
+import com.github.izaquemacielcunha.service.tse.TseUrlBuilder;
 
 @Singleton
 public class CsvEnriquecedorService {
@@ -24,42 +24,49 @@ public class CsvEnriquecedorService {
     private static final String BOLETIM_URNA_BUSA = "busa";
     private static final String INOPERANTE_AGREGADA = "inoperante/agregada";
 
-    private final ExternalServiceImpl externalService;
+    private final ExternalService externalService;
     private final CsvMapper mapper;
+    private final TseUrlBuilder urlBuilder;
 
     @Inject
-    public CsvEnriquecedorService(ExternalServiceImpl externalService, CsvMapper mapper) {
+    public CsvEnriquecedorService(ExternalService externalService, CsvMapper mapper, TseUrlBuilder urlBuilder) {
         this.externalService = externalService;
         this.mapper = mapper;
+        this.urlBuilder = urlBuilder;
     }
 
     public void enriquecer() throws Exception {
 
         long start = System.nanoTime();
 
-        CsvSchema schemaLeitura = mapper.schemaFor(LinhaMuncipio.class).withHeader();
-        MappingIterator<LinhaMuncipio> iterador = mapper.readerFor(LinhaMuncipio.class)
+        CsvSchema schemaLeitura = mapper.schemaFor(LinhaMunicipio.class).withHeader();
+        List<LinhaMunicipio> linhasOriginais;
+        try (MappingIterator<LinhaMunicipio> iterador = mapper.readerFor(LinhaMunicipio.class)
                 .with(schemaLeitura)
-                .readValues(new File("temp-files/temp.csv"));
-
-        List<LinhaMuncipio> linhasOriginais = iterador.readAll();
+                .readValues(new File("temp-files/temp.csv"))) {
+            linhasOriginais = iterador.readAll();
+        }
 
         List<LinhaMunicipioEnriquecida> linhasEnriquecidas = linhasOriginais.parallelStream().map(linha -> {
             try {
-                Optional<Metadados> dados = externalService.callZonaSecaoInfos(montarUrl(linha));
-                if (Objects.nonNull(dados.get().hashes())) {
+                Optional<Metadados> dados = externalService.callZonaSecaoInfos(urlBuilder.buildUrlSecaoMetadados(linha));
+                if (dados.isPresent() && dados.get().hashes() != null && !dados.get().hashes().isEmpty()) {
+                    var hashInfo = dados.get().hashes().getFirst();
+                    String buNome = hashInfo.arquivos() != null ? hashInfo.arquivos()
+                            .stream()
+                            .filter(arquivo -> BOLETIM_URNA.equals(arquivo.tipo()) || BOLETIM_URNA_BUSA.equals(arquivo.tipo()))
+                            .map(Arquivo::nome)
+                            .findFirst()
+                            .orElse(INOPERANTE_AGREGADA) : INOPERANTE_AGREGADA;
+
                     return new LinhaMunicipioEnriquecida(
                             linha.unidadeFederativa(),
                             linha.codigoMunicipio(),
                             linha.nomeMunicipio(),
                             linha.numeroZona(),
                             linha.numeroSecao(),
-                            dados.get().hashes().getFirst().hash(),
-                            dados.get().hashes().getFirst().arquivos()
-                                    .stream()
-                                    .filter(arquivo -> arquivo.tipo().equals(BOLETIM_URNA) || arquivo.tipo().equals(BOLETIM_URNA_BUSA))
-                                    .findFirst()
-                                    .get().nome()
+                            hashInfo.hash(),
+                            buNome
                     );
                 }
                 return new LinhaMunicipioEnriquecida(
@@ -74,7 +81,7 @@ public class CsvEnriquecedorService {
             catch (Exception e) {
                 throw new RuntimeException("[enriquecer] - Erro ao enriquecer csv. Linha: " + linha, e);
             }
-        }).collect(Collectors.toList());
+        }).toList();
 
         CsvSchema schemaEscrita = mapper.schemaFor(LinhaMunicipioEnriquecida.class).withHeader();
         mapper.writer(schemaEscrita).writeValue(new File("temp-files/arquivo-enriquecido.csv"), linhasEnriquecidas);
@@ -85,11 +92,4 @@ public class CsvEnriquecedorService {
         System.out.println("Processamento concluído com sucesso! Tempo gasto: " + (timeElapsed / 1_000_000_000) + " s");
     }
 
-    private String montarUrl(LinhaMuncipio linha) {
-        String baseUrl = "https://resultados.tse.jus.br/oficial/ele2026/arquivo-urna/3220/dados/%s/%s/%s/%s/p003220-%s-m%s-z%s-s%s-aux.json";
-        return String.format(baseUrl, linha.unidadeFederativa().toLowerCase(), linha.codigoMunicipio(), linha.numeroZona(),
-                linha.numeroSecao(), linha.unidadeFederativa().toLowerCase(), linha.codigoMunicipio(), linha.numeroZona(),
-                linha.numeroSecao());
-    }
-
-}// end of class
+}
