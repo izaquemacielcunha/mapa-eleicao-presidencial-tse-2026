@@ -13,14 +13,15 @@ import tools.jackson.databind.MappingIterator;
 import tools.jackson.dataformat.csv.CsvMapper;
 import tools.jackson.dataformat.csv.CsvSchema;
 
-import com.github.izaquemacielcunha.model.csv.LinhaExportacaoEnriquecidaCsv;
-import com.github.izaquemacielcunha.model.csv.LinhaExportacaoCsv;
+import com.github.izaquemacielcunha.model.csv.LinhaMunicipioEnriquecida;
+import com.github.izaquemacielcunha.model.csv.LinhaMuncipio;
 import com.github.izaquemacielcunha.model.urna.Metadados;
 import com.github.izaquemacielcunha.service.ExternalServiceImpl;
 
 @Singleton
 public class CsvEnriquecedorService {
     private static final String BOLETIM_URNA = "bu";
+    private static final String BOLETIM_URNA_BUSA = "busa";
     private static final String INOPERANTE_AGREGADA = "inoperante/agregada";
 
     private final ExternalServiceImpl externalService;
@@ -36,18 +37,18 @@ public class CsvEnriquecedorService {
 
         long start = System.nanoTime();
 
-        CsvSchema schemaLeitura = mapper.schemaFor(LinhaExportacaoCsv.class).withHeader();
-        MappingIterator<LinhaExportacaoCsv> iterador = mapper.readerFor(LinhaExportacaoCsv.class)
+        CsvSchema schemaLeitura = mapper.schemaFor(LinhaMuncipio.class).withHeader();
+        MappingIterator<LinhaMuncipio> iterador = mapper.readerFor(LinhaMuncipio.class)
                 .with(schemaLeitura)
                 .readValues(new File("temp.csv"));
 
-        List<LinhaExportacaoCsv> linhasOriginais = iterador.readAll();
+        List<LinhaMuncipio> linhasOriginais = iterador.readAll();
 
-        List<LinhaExportacaoEnriquecidaCsv> linhasEnriquecidas = linhasOriginais.parallelStream().map(linha -> {
+        List<LinhaMunicipioEnriquecida> linhasEnriquecidas = linhasOriginais.parallelStream().map(linha -> {
             try {
                 Optional<Metadados> dados = externalService.callZonaSecaoInfos(montarUrl(linha));
                 if (Objects.nonNull(dados.get().hashes())) {
-                    return new LinhaExportacaoEnriquecidaCsv(
+                    return new LinhaMunicipioEnriquecida(
                             linha.unidadeFederativa(),
                             linha.codigoMunicipio(),
                             linha.nomeMunicipio(),
@@ -56,12 +57,12 @@ public class CsvEnriquecedorService {
                             dados.get().hashes().getFirst().hash(),
                             dados.get().hashes().getFirst().arquivos()
                                     .stream()
-                                    .filter(arquivo -> arquivo.tipo().equals(BOLETIM_URNA))
+                                    .filter(arquivo -> arquivo.tipo().equals(BOLETIM_URNA) || arquivo.tipo().equals(BOLETIM_URNA_BUSA))
                                     .findFirst()
                                     .get().nome()
                     );
                 }
-                return new LinhaExportacaoEnriquecidaCsv(
+                return new LinhaMunicipioEnriquecida(
                         linha.unidadeFederativa(),
                         linha.codigoMunicipio(),
                         linha.nomeMunicipio(),
@@ -75,7 +76,7 @@ public class CsvEnriquecedorService {
             }
         }).collect(Collectors.toList());
 
-        CsvSchema schemaEscrita = mapper.schemaFor(LinhaExportacaoEnriquecidaCsv.class).withHeader();
+        CsvSchema schemaEscrita = mapper.schemaFor(LinhaMunicipioEnriquecida.class).withHeader();
         mapper.writer(schemaEscrita).writeValue(new File("arquivo-enriquecido.csv"), linhasEnriquecidas);
 
         long finish = System.nanoTime();
@@ -84,7 +85,7 @@ public class CsvEnriquecedorService {
         System.out.println("Processamento concluído com sucesso! Tempo gasto: " + (timeElapsed / 1_000_000_000) + " s");
     }
 
-    private String montarUrl(LinhaExportacaoCsv linha) {
+    private String montarUrl(LinhaMuncipio linha) {
         String baseUrl = "https://resultados.tse.jus.br/oficial/ele2026/arquivo-urna/3220/dados/%s/%s/%s/%s/p003220-%s-m%s-z%s-s%s-aux.json";
         return String.format(baseUrl, linha.unidadeFederativa().toLowerCase(), linha.codigoMunicipio(), linha.numeroZona(),
                 linha.numeroSecao(), linha.unidadeFederativa().toLowerCase(), linha.codigoMunicipio(), linha.numeroZona(),

@@ -11,7 +11,7 @@ import tools.jackson.databind.MappingIterator;
 import tools.jackson.dataformat.csv.CsvMapper;
 import tools.jackson.dataformat.csv.CsvSchema;
 
-import com.github.izaquemacielcunha.model.csv.LinhaExportacaoEnriquecidaCsv;
+import com.github.izaquemacielcunha.model.csv.LinhaMunicipioEnriquecida;
 import com.github.izaquemacielcunha.service.ExternalServiceImpl;
 
 
@@ -32,12 +32,12 @@ public class BoletimUrnaDownloadService {
 
         long start = System.nanoTime();
 
-        CsvSchema schemaLeitura = mapper.schemaFor(LinhaExportacaoEnriquecidaCsv.class).withHeader();
-        MappingIterator<LinhaExportacaoEnriquecidaCsv> iterador = mapper.readerFor(LinhaExportacaoEnriquecidaCsv.class)
+        CsvSchema schemaLeitura = mapper.schemaFor(LinhaMunicipioEnriquecida.class).withHeader();
+        MappingIterator<LinhaMunicipioEnriquecida> iterador = mapper.readerFor(LinhaMunicipioEnriquecida.class)
                 .with(schemaLeitura)
                 .readValues(new File("arquivo-enriquecido.csv"));
 
-        List<LinhaExportacaoEnriquecidaCsv> linhasOriginais = iterador.readAll();
+        List<LinhaMunicipioEnriquecida> linhasOriginais = iterador.readAll();
 
         linhasOriginais.parallelStream().forEach(linhaExportacaoEnriquecidaCsv -> {
             try {
@@ -56,7 +56,7 @@ public class BoletimUrnaDownloadService {
         System.out.println("Download concluído com sucesso! Tempo gasto: " + (timeElapsed / 1_000_000_000) + " s");
     }
 
-    private String montarUrl(LinhaExportacaoEnriquecidaCsv linha) {
+    private String montarUrl(LinhaMunicipioEnriquecida linha) {
         String baseUrl = "https://resultados.tse.jus.br/oficial/ele2026/arquivo-urna/3220/dados/%s/%s/%s/%s/%s/%s";
 
         return String.format(baseUrl, linha.unidadeFederativa().toLowerCase(), linha.codigoMunicipio(),
