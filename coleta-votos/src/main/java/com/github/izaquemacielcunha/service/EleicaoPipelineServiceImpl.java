@@ -97,7 +97,7 @@ public class EleicaoPipelineServiceImpl implements EleicaoPipelineService {
 
     private void gerarEstruturaSecoesMunicipais() {
         Instant inicio = Instant.now();
-        logger.info("[Estrutura Seções] Iniciando obtenção de configuração do município {}/{}...", config.uf(), config.codigoMunicipio());
+        logger.info("[Fase 1/6 - Estrutura Seções] Iniciando obtenção de configuração do município {}/{}...", config.uf(), config.codigoMunicipio());
 
         try {
             if (!Files.exists(config.diretorioTemp())) {
@@ -123,33 +123,33 @@ public class EleicaoPipelineServiceImpl implements EleicaoPipelineService {
 
         Duration decorrido = Duration.between(inicio, Instant.now());
         logger.info(
-                "[Estrutura Seções] Configuração municipal concluída em {} ms. Total de seções mapeadas: {}.",
+                "[Fase 1/6 - Estrutura Seções] Configuração municipal concluída em {} ms. Total de seções mapeadas: {}.",
                 decorrido.toMillis(), totalSecoes);
     }
 
     private void enriquecerMetadadosSecoes() {
         Instant inicio = Instant.now();
-        logger.info("[Enriquecimento Metadados] Iniciando enriquecimento de seções eleitorais...");
+        logger.info("[Fase 2/6 - Enriquecimento Metadados] Iniciando enriquecimento de seções eleitorais...");
 
         csvEnriquecedorService.enriquecerMetadadosSecoes();
 
         Duration decorrido = Duration.between(inicio, Instant.now());
-        logger.info("[Enriquecimento Metadados] Enriquecimento concluído em {} ms.", decorrido.toMillis());
+        logger.info("[Fase 2/6 - Enriquecimento Metadados] Enriquecimento concluído em {} ms.", decorrido.toMillis());
     }
 
     private void baixarBoletinsUrna() {
         Instant inicio = Instant.now();
-        logger.info("[Download BUs] Iniciando download dos Boletins de Urna (BUs)...");
+        logger.info("[Fase 3/6 - Download Boletins] Iniciando download dos Boletins de Urna (BUs)...");
 
         boletimUrnaDownloader.baixarBoletinsUrna();
 
         Duration decorrido = Duration.between(inicio, Instant.now());
-        logger.info("[Download BUs] Download dos boletins concluído em {} ms.", decorrido.toMillis());
+        logger.info("[Fase 3/6 - Download Boletins] Download dos boletins concluído em {} ms.", decorrido.toMillis());
     }
 
     private void apurarVotosBoletins() {
         Instant inicio = Instant.now();
-        logger.info("[Apuração Votos] Iniciando decodificação ASN.1 e apuração de votos para Presidente...");
+        logger.info("[Fase 4/6 - Apuração Votos] Iniciando decodificação ASN.1 e apuração de votos para Presidente...");
 
         List<ResumoVotacao> votacao = boletimUrnaService.processarDiretorio(config.diretorioBoletins());
         csvBoletimUrnaService.exportarVotosParaCsv(votacao);
@@ -157,22 +157,22 @@ public class EleicaoPipelineServiceImpl implements EleicaoPipelineService {
         int totalVotos = votacao.stream().mapToInt(ResumoVotacao::votos).sum();
         Duration decorrido = Duration.between(inicio, Instant.now());
         logger.info(
-                "[Apuração Votos] Apuração concluída em {} ms. Total de registros: {}, total de votos apurados: {}.",
+                "[Fase 4/6 - Apuração Votos] Apuração concluída em {} ms. Total de registros: {}, total de votos apurados: {}.",
                 decorrido.toMillis(), votacao.size(), totalVotos);
     }
 
     private void mesclarVotosComSecoes() {
         Instant inicio = Instant.now();
-        logger.info("[Mesclagem Votos] Iniciando mesclagem dos votos com os dados territoriais...");
+        logger.info("[Fase 5/6 - Mesclagem Votos] Iniciando mesclagem dos votos com os dados territoriais...");
 
         csvMescladorBoletimService.mesclarBoletinsComMunicipios();
         Duration decorrido = Duration.between(inicio, Instant.now());
-        logger.info("[Mesclagem Votos] Mesclagem de votos concluída em {} ms.", decorrido.toMillis());
+        logger.info("[Fase 5/6 - Mesclagem Votos] Mesclagem de votos concluída em {} ms.", decorrido.toMillis());
     }
 
     private void exportarDatasetGeorreferenciadoParaCarto() {
         Instant inicio = Instant.now();
-        logger.info("[Exportação Carto] Iniciando cruzamento com coordenadas e exportação para o Carto.com...");
+        logger.info("[Fase 6/6 - Exportação Carto] Iniciando cruzamento com coordenadas e exportação para o Carto.com...");
 
         csvCartoExportadorService.exportarDatasetCarto(
                 config.arquivoCoordenadasTse(),
@@ -183,7 +183,7 @@ public class EleicaoPipelineServiceImpl implements EleicaoPipelineService {
 
         Duration decorrido = Duration.between(inicio, Instant.now());
         logger.info(
-                "[Exportação Carto] Exportação concluída em {} ms. Arquivo final: {}",
+                "[Fase 6/6 - Exportação Carto] Exportação concluída em {} ms. Arquivo final: {}",
                 decorrido.toMillis(), config.arquivoCartoFinal().toAbsolutePath());
     }
 }

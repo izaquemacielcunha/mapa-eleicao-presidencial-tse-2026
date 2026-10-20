@@ -64,19 +64,4 @@ public class CsvBoletimUrnaServiceImpl implements CsvBoletimUrnaService {
         logger.info("CSV de boletins de urna gerado com sucesso em {} ms. Total de linhas gravadas: {}.",
                 decorrido.toMillis(), linhasBoletins.size());
     }
-
-    @Deprecated
-    public void processar(List<ResumoVotacao> resultados) {
-        exportarVotosParaCsv(resultados);
-    }
-
-    @Deprecated
-    public void processarBoletins(List<ResumoVotacao> resultados) {
-        exportarVotosParaCsv(resultados);
-    }
-
-    @Deprecated
-    public void process(List<ResumoVotacao> resultados) {
-        exportarVotosParaCsv(resultados);
-    }
 }

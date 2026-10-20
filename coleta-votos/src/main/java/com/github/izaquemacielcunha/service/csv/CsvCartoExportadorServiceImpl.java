@@ -30,7 +30,7 @@ import com.github.izaquemacielcunha.model.csv.LinhaMunicipioCoordenadas;
 public class CsvCartoExportadorServiceImpl implements CsvCartoExportadorService {
     private static final Logger logger = LoggerFactory.getLogger(CsvCartoExportadorServiceImpl.class);
 
-    public record ResultadoExportacaoCarto(int totalExportados, int totalSemCoordenadas) {}
+    private record ResultadoExportacaoCarto(int totalExportados, int totalSemCoordenadas) {}
 
     private final CsvMapper csvMapper;
 
@@ -49,13 +49,13 @@ public class CsvCartoExportadorServiceImpl implements CsvCartoExportadorService 
         }
     }
 
-    public ResultadoExportacaoCarto exportar(Path arquivoCoordenadas, Path arquivoMesclado, Path arquivoDestino, String codigoMunicipioAlvo) throws IOException {
+    private ResultadoExportacaoCarto exportar(Path arquivoCoordenadas, Path arquivoMesclado, Path arquivoDestino, String codigoMunicipioAlvo) throws IOException {
         Objects.requireNonNull(arquivoMesclado, "Arquivo mesclado não pode ser nulo");
         Objects.requireNonNull(arquivoDestino, "Arquivo destino não pode ser nulo");
         return exportar(arquivoCoordenadas, arquivoMesclado.toFile(), arquivoDestino.toFile(), codigoMunicipioAlvo);
     }
 
-    public ResultadoExportacaoCarto exportar(Path arquivoCoordenadas, File arquivoMesclado, File arquivoDestino, String codigoMunicipioAlvo) throws IOException {
+    private ResultadoExportacaoCarto exportar(Path arquivoCoordenadas, File arquivoMesclado, File arquivoDestino, String codigoMunicipioAlvo) throws IOException {
         Objects.requireNonNull(arquivoCoordenadas, "Arquivo de coordenadas não pode ser nulo");
         Objects.requireNonNull(arquivoMesclado, "Arquivo mesclado não pode ser nulo");
         Objects.requireNonNull(arquivoDestino, "Arquivo destino não pode ser nulo");

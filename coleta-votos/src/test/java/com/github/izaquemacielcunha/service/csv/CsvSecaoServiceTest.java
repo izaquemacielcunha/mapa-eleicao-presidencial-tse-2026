@@ -17,7 +17,7 @@ import tools.jackson.dataformat.csv.CsvMapper;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class CsvServiceTest {
+class CsvSecaoServiceTest {
 
     @Test
     @DisplayName("Deve criar o diretório temp automaticamente e gravar o arquivo temp.csv usando exportarSecoesMunicipaisParaCsv")

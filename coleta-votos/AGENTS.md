@@ -9,12 +9,12 @@ Este documento orienta agentes autônomos e desenvolvedores nas manutenções, m
 O **coleta-votos** é uma ferramenta de ETL em linha de comando projetada para extrair, decodificar, enriquecer e agregar dados eleitorais do Tribunal Superior Eleitoral (TSE). 
 
 O pipeline divide-se em 6 fases sequenciais orquestradas pelo `EleicaoPipelineService`:
-1. **Configuração municipal:** Consulta metadados de seções e zonas do município via API oficial do TSE (`TseUrlBuilder`) e gera o CSV inicial.
-2. **Enriquecimento:** Consulta metadados específicos para cada seção, identificando os hashes dos arquivos de urna e tratando seções agregadas/inoperantes.
-3. **Download dos Boletins de Urna (BU):** Realiza o download concorrente com taxa controlada (`RateLimiter`) dos arquivos binários de urna.
-4. **Decodificação ASN.1 e totalização:** Processa a estrutura ASN.1 dos arquivos `.bu` (usando `asn1bean`) e totaliza votos válidos por candidato.
-5. **Mesclagem:** Combina dados territoriais enriquecidos com a apuração de votos.
-6. **Geolocalização para Carto:** Cruza os boletins agregados com dados geoespaciais (latitude, longitude, bairro e local de votação) para gerar o dataset pronto para Carto.com.
+1. **`[Fase 1/6 - Estrutura Seções]` (`gerarEstruturaSecoesMunicipais()`):** Consulta metadados de seções e zonas do município via API oficial do TSE (`TseUrlBuilder`) e gera o CSV inicial.
+2. **`[Fase 2/6 - Enriquecimento Metadados]` (`enriquecerMetadadosSecoes()`):** Consulta metadados específicos para cada seção, identificando os hashes dos arquivos de urna e tratando seções agregadas/inoperantes.
+3. **`[Fase 3/6 - Download Boletins]` (`baixarBoletinsUrna()`):** Realiza o download concorrente com taxa controlada (`RateLimiter`) dos arquivos binários de urna.
+4. **`[Fase 4/6 - Apuração Votos]` (`apurarVotosBoletins()`):** Decodifica a estrutura ASN.1 dos arquivos `.dat` (usando `asn1bean`) e totaliza votos válidos para Presidente.
+5. **`[Fase 5/6 - Mesclagem Votos]` (`mesclarVotosComSecoes()`):** Combina dados territoriais enriquecidos com a apuração dos votos.
+6. **`[Fase 6/6 - Exportação Carto]` (`exportarDatasetGeorreferenciadoParaCarto()`):** Cruza os boletins agregados com dados geoespaciais (latitude, longitude, bairro e local de votação) para gerar o dataset pronto para Carto.com.
 
 ---
 
@@ -67,12 +67,19 @@ mvn test
 * **Inicialização no `App.java` (Prevenção de Replay Warning):**
   - Devido ao carregamento antecipado de classes de serviço estáticas pelo grafo de injeção do Dagger, chame explicitamente `LoggerFactory.getILoggerFactory();` logo na primeira linha do `App.main()` antes de instanciar o componente. Isso impede que o SLF4J emita o aviso de aviso/replay `SLF4J(W): A number of logging calls during initialization phase...`.
 
-### Injeção de Dependência (Dagger) e Configuração CLI
+### Injeção de Dependência (Dagger) e Contratos de Serviço
 
-* **Configuração via CLI (`EleicaoConfig`):** O aplicativo recebe parâmetros de linha de comando (`UF` e `CODIGO_MUNICIPIO`) parseados e validados no record `EleicaoConfig.fromArgs(args)`.
-* **Injeção no Componente:** O `EleicaoConfig` é injetado no grafo Dagger através de `@Component.Factory` e `@BindsInstance` no `ApplicationComponent`. Qualquer novo parâmetro deve passar por essa fábrica.
+* **Padrão Interface + Implementação (`*Service` / `*ServiceImpl`):** Todos os serviços de domínio devem expor uma interface pública desacoplada e uma classe concreta implementadora com sufixo `Impl` anotada com `@Inject`. Consumidores e orquestradores devem depender exclusivamente das interfaces.
+* **Vínculo com `@Binds` no `ServiceModule`:** Novos serviços devem ser registrados no módulo abstrato `ServiceModule` via anotação `@Binds` e escopo `@Singleton`. Evite `@Provides` com instanciações manuais para classes com construtor `@Inject`.
+* **Configuração via CLI (`EleicaoConfig`):** O aplicativo recebe parâmetros de linha de comando (`UF` e `CODIGO_MUNICIPIO`) parseados e validados no record `EleicaoConfig.fromArgs(args)`, injetado no grafo via `@BindsInstance` na fábrica de `ApplicationComponent`.
 * **Caminhos Dinâmicos e `java.nio.file.Path`:** Centralize a resolução de diretórios de trabalho (`temp-files/`, diretório de boletins e nomes de CSVs gerados parametrizados pela UF) no `EleicaoConfig`. Use sempre `Path` e nunca espalhe caminhos fixos (*hardcoded*) nas classes de serviço.
 * **Orquestrador Central:** O `App.java` deve ser mínimo (apenas instanciar a configuração, obter o componente Dagger e chamar `pipelineService.executar()`). A coordenação das fases pertence ao `EleicaoPipelineService`.
+
+### Encapsulamento Rígido e Nomenclatura Expressiva
+
+* **Operador de acesso explícito (`private`):** Métodos auxiliares, subtarefas de decomposição ou rotinas de parsing internas devem ser estritamente declarados como `private`. **Nunca** utilize visibilidade padrão de pacote (`package-private`) ou comentários do tipo `/* package-private */`.
+* **Testes unitários via API Pública:** Testes unitários devem validar o comportamento dos serviços através dos métodos públicos definidos nos contratos de interface, e não tentar invocar métodos privados diretamente.
+* **Nomenclatura orientada ao domínio:** Nomes de métodos e etapas do pipeline devem descrever claramente a intenção e a ação executada (ex: `gerarEstruturaSecoesMunicipais()`, `exportarVotosParaCsv()`), eliminando numerações ordinais (`executarFase1`, `fase2`) ou nomes genéricos (`process()`).
 
 ### Modelagem de Dados e Tipagem
 

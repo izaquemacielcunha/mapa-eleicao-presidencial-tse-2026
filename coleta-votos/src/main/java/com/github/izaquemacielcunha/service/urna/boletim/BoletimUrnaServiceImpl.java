@@ -43,11 +43,11 @@ public class BoletimUrnaServiceImpl implements BoletimUrnaService {
         return processarBoletins(diretorioBoletins);
     }
 
-    public List<ResumoVotacao> processarDiretorio(String nomeDiretorio) {
+    private List<ResumoVotacao> processarDiretorio(String nomeDiretorio) {
         return processarBoletins(nomeDiretorio);
     }
 
-    public List<ResumoVotacao> processarBoletins(Path diretorio) {
+    private List<ResumoVotacao> processarBoletins(Path diretorio) {
         Objects.requireNonNull(diretorio, "Diretório de boletins não pode ser nulo");
         List<Path> listaBoletins = listarArquivosBoletins(diretorio);
         return listaBoletins.parallelStream()
@@ -63,7 +63,7 @@ public class BoletimUrnaServiceImpl implements BoletimUrnaService {
                 .toList();
     }
 
-    public List<ResumoVotacao> processarBoletins(String nomeDiretorio) {
+    private List<ResumoVotacao> processarBoletins(String nomeDiretorio) {
         Objects.requireNonNull(nomeDiretorio, "Nome do diretório não pode ser nulo");
         return processarBoletins(Path.of(nomeDiretorio));
     }

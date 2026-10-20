@@ -24,14 +24,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class CsvCartoExportadorServiceTest {
 
     private final CsvMapper csvMapper = new CsvMapper();
-    private final CsvCartoExportadorServiceImpl service = new CsvCartoExportadorServiceImpl(csvMapper);
+    private final CsvCartoExportadorService service = new CsvCartoExportadorServiceImpl(csvMapper);
 
     @Test
     @DisplayName("Deve exportar dataset do Carto cruzando coordenadas e normalizando latitude/longitude")
     void deveExportarDatasetCartoComCoordenadas(@TempDir Path tempDir) throws IOException {
         Path arquivoCoords = tempDir.resolve("coordenadas.csv");
-        File arquivoMesclado = tempDir.resolve("mesclado.csv").toFile();
-        File arquivoCarto = tempDir.resolve("carto-saida.csv").toFile();
+        Path arquivoMesclado = tempDir.resolve("mesclado.csv");
+        Path arquivoCarto = tempDir.resolve("carto-saida.csv");
 
         // Escreve CSV de coordenadas no padrão do TSE (; e ISO-8859-1)
         try (BufferedWriter writer = Files.newBufferedWriter(arquivoCoords, Charset.forName("ISO-8859-1"))) {
@@ -45,17 +45,17 @@ class CsvCartoExportadorServiceTest {
                 new LinhaMescladaMunicipioBoletim("PR", "75353", "CURITIBA", "001", "00010", "13", 100, "hash", "bu-10.dat")
         );
         CsvSchema schemaMesclaBase = csvMapper.schemaFor(LinhaMescladaMunicipioBoletim.class).withHeader().withColumnSeparator(',');
-        csvMapper.writer(schemaMesclaBase).writeValue(arquivoMesclado, mesclado);
+        csvMapper.writer(schemaMesclaBase).writeValue(arquivoMesclado.toFile(), mesclado);
 
         // Exporta para Carto filtrando pelo município 75353
-        service.exportar(arquivoCoords, arquivoMesclado, arquivoCarto, "75353");
+        service.exportarDatasetCarto(arquivoCoords, arquivoMesclado, arquivoCarto, "75353");
 
         // Lê e valida o arquivo gerado
         CsvSchema schemaFinal = csvMapper.schemaFor(LinhaMunicipioBoletimCoordenadas.class).withHeader().withColumnSeparator(',');
         List<LinhaMunicipioBoletimCoordenadas> resultado;
         try (MappingIterator<LinhaMunicipioBoletimCoordenadas> it = csvMapper.readerFor(LinhaMunicipioBoletimCoordenadas.class)
                 .with(schemaFinal)
-                .readValues(arquivoCarto)) {
+                .readValues(arquivoCarto.toFile())) {
             resultado = it.readAll();
         }
 

@@ -5,9 +5,4 @@ import com.github.izaquemacielcunha.model.urna.boletim.ResumoVotacao;
 
 public interface CsvBoletimUrnaService {
     void exportarVotosParaCsv(List<ResumoVotacao> resultados);
-
-    @Deprecated
-    default void processar(List<ResumoVotacao> resultados) {
-        exportarVotosParaCsv(resultados);
-    }
 }

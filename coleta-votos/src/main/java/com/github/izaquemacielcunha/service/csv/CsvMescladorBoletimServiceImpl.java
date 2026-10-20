@@ -51,7 +51,7 @@ public class CsvMescladorBoletimServiceImpl implements CsvMescladorBoletimServic
         }
     }
 
-    public int mesclar(Path fileUrnas, Path fileVotos, Path outputFile) throws IOException {
+    private int mesclar(Path fileUrnas, Path fileVotos, Path outputFile) throws IOException {
         Objects.requireNonNull(fileUrnas, "Arquivo de urnas não pode ser nulo");
         Objects.requireNonNull(fileVotos, "Arquivo de votos não pode ser nulo");
         Objects.requireNonNull(outputFile, "Arquivo de saída não pode ser nulo");

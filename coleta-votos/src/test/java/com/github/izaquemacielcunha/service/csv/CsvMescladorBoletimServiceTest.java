@@ -1,6 +1,5 @@
 package com.github.izaquemacielcunha.service.csv;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
@@ -25,20 +24,24 @@ class CsvMescladorBoletimServiceTest {
     private final CsvMapper csvMapper = new CsvMapper();
 
     @Test
-    @DisplayName("Deve mesclar votos com informações enriquecidas de município com sucesso via sobrecarga de Path")
+    @DisplayName("Deve mesclar votos com informações enriquecidas de município com sucesso")
     void deveMesclarVotosComMunicipio(@TempDir Path tempDir) throws IOException {
-        CsvMescladorBoletimServiceImpl service = new CsvMescladorBoletimServiceImpl(csvMapper);
-
-        Path fileUrnas = tempDir.resolve("enriquecido.csv");
-        Path fileVotos = tempDir.resolve("votos.csv");
-        Path fileSaida = tempDir.resolve("resultado.csv");
+        EleicaoConfig config = new EleicaoConfig(
+                "PR",
+                "75353",
+                "3220",
+                "ele2026",
+                tempDir,
+                tempDir.resolve("boletins")
+        );
+        CsvMescladorBoletimService service = new CsvMescladorBoletimServiceImpl(csvMapper, config);
 
         // Grava arquivo de urnas enriquecido
         List<LinhaMunicipioEnriquecida> urnas = List.of(
                 new LinhaMunicipioEnriquecida("PR", "75353", "CURITIBA", "1", "10", "hash-abc", "bu-10.dat")
         );
         CsvSchema schemaUrnas = csvMapper.schemaFor(LinhaMunicipioEnriquecida.class).withHeader();
-        csvMapper.writer(schemaUrnas).writeValue(fileUrnas.toFile(), urnas);
+        csvMapper.writer(schemaUrnas).writeValue(config.arquivoEnriquecidoCsv().toFile(), urnas);
 
         // Grava arquivo de votos
         List<LinhaBoletimUrna> votos = List.of(
@@ -46,18 +49,17 @@ class CsvMescladorBoletimServiceTest {
                 new LinhaBoletimUrna("22", 120, "bu-10.dat")
         );
         CsvSchema schemaVotos = csvMapper.schemaFor(LinhaBoletimUrna.class).withHeader();
-        csvMapper.writer(schemaVotos).writeValue(fileVotos.toFile(), votos);
+        csvMapper.writer(schemaVotos).writeValue(config.arquivoBoletimUrnaCsv().toFile(), votos);
 
-        // Executa a mescla via sobrecarga de conveniência
-        int totalMesclados = service.mesclar(fileUrnas, fileVotos, fileSaida);
-        assertEquals(2, totalMesclados);
+        // Executa a mescla via método de serviço
+        service.mesclarBoletinsComMunicipios();
 
         // Lê e valida o resultado
         CsvSchema schemaMesclado = csvMapper.schemaFor(LinhaMescladaMunicipioBoletim.class).withHeader();
         List<LinhaMescladaMunicipioBoletim> resultado;
         try (MappingIterator<LinhaMescladaMunicipioBoletim> it = csvMapper.readerFor(LinhaMescladaMunicipioBoletim.class)
                 .with(schemaMesclado)
-                .readValues(fileSaida.toFile())) {
+                .readValues(config.arquivoResultadoMescladoCsv().toFile())) {
             resultado = it.readAll();
         }
 

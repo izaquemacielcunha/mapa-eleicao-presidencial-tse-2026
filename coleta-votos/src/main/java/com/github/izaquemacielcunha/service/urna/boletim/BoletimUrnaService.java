@@ -7,9 +7,4 @@ import com.github.izaquemacielcunha.model.urna.boletim.ResumoVotacao;
 
 public interface BoletimUrnaService {
     List<ResumoVotacao> processarDiretorio(Path diretorioBoletins);
-
-    @Deprecated
-    default List<ResumoVotacao> processarBoletins(Path diretorio) {
-        return processarDiretorio(diretorio);
-    }
 }

@@ -29,7 +29,7 @@ import com.github.izaquemacielcunha.service.tse.TseUrlBuilder;
 public class BoletimUrnaDownloadServiceImpl implements BoletimUrnaDownloadService {
     private static final Logger logger = LoggerFactory.getLogger(BoletimUrnaDownloadServiceImpl.class);
 
-    public record ResultadoDownload(int totalSolicitados, int totalBaixados, int totalInoperantesIgnorados) {}
+    private record ResultadoDownload(int totalSolicitados, int totalBaixados, int totalInoperantesIgnorados) {}
 
     private final ExternalService externalService;
     private final CsvMapper mapper;

@@ -39,14 +39,6 @@ class ExternalServiceImplValidationTest {
     }
 
     @Test
-    @DisplayName("Métodos legados callMunicipioConfig e callZonaSecaoInfos devem delegar e validar")
-    @SuppressWarnings("deprecation")
-    void metodosLegadosValidacao() {
-        assertThrows(NullPointerException.class, () -> externalService.callMunicipioConfig(null, "75353"));
-        assertThrows(NullPointerException.class, () -> externalService.callZonaSecaoInfos(null));
-    }
-
-    @Test
     @DisplayName("baixarArquivoBoletimUrnaDat deve lançar exceção para parâmetros nulos ou em branco")
     void baixarArquivoBoletimUrnaDatValidacao() {
         Path tempDir = Path.of("temp-files");

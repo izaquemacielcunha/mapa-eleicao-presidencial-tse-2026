@@ -42,8 +42,8 @@ class CsvBoletimUrnaServiceTest {
     }
 
     @Test
-    @DisplayName("Método processar legado deve continuar funcionando por compatibilidade")
-    void deveProcessarBoletinsCompatibilidade(@TempDir Path baseDir) {
+    @DisplayName("Deve exportar votos com apenas um registro com sucesso")
+    void deveExportarVotosRegistroUnico(@TempDir Path baseDir) {
         Path customTempDir = baseDir.resolve("temp-boletins-2");
         EleicaoConfig config = new EleicaoConfig(
                 "PR",
@@ -58,7 +58,7 @@ class CsvBoletimUrnaServiceTest {
         CsvBoletimUrnaService service = new CsvBoletimUrnaServiceImpl(mapper, config);
 
         List<ResumoVotacao> votacoes = List.of(new ResumoVotacao("13", 50, "bu-2.dat"));
-        service.processar(votacoes);
+        service.exportarVotosParaCsv(votacoes);
 
         assertTrue(Files.exists(config.arquivoBoletimUrnaCsv()), "O arquivo de votos deve existir");
     }

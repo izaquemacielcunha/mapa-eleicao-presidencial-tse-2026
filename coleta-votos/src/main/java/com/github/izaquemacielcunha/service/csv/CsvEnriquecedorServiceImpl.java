@@ -33,7 +33,7 @@ import com.github.izaquemacielcunha.service.tse.TseUrlBuilder;
 public class CsvEnriquecedorServiceImpl implements CsvEnriquecedorService {
     private static final Logger logger = LoggerFactory.getLogger(CsvEnriquecedorServiceImpl.class);
 
-    public record ResultadoEnriquecimento(int totalSecoes, int totalAtivas, int totalInoperantes) {}
+    private record ResultadoEnriquecimento(int totalSecoes, int totalAtivas, int totalInoperantes) {}
 
     private final ExternalService externalService;
     private final CsvMapper mapper;
@@ -57,7 +57,7 @@ public class CsvEnriquecedorServiceImpl implements CsvEnriquecedorService {
         enriquecer();
     }
 
-    public ResultadoEnriquecimento enriquecer() {
+    private ResultadoEnriquecimento enriquecer() {
         Instant inicio = Instant.now();
 
         CsvSchema schemaLeitura = mapper.schemaFor(LinhaMunicipio.class).withHeader();
