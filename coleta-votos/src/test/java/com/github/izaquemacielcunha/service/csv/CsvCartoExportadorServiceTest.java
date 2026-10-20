@@ -50,6 +50,10 @@ class CsvCartoExportadorServiceTest {
         // Exporta para Carto filtrando pelo município 75353
         service.exportarDatasetCarto(arquivoCoords, arquivoMesclado, arquivoCarto, "75353");
 
+        // Valida cabeçalho com labels em maiúsculas
+        List<String> linhasArquivo = Files.readAllLines(arquivoCarto);
+        assertEquals("SG_UF,CD_MUNICIPIO,NM_MUNICIPIO,NR_ZONA,NR_SECAO,NM_BAIRRO,NM_LOCAL_VOTACAO,LATITUDE,LONGITUDE,CANDIDATO,QTD_VOTOS,BOLETIM_URNA", linhasArquivo.getFirst());
+
         // Lê e valida o arquivo gerado
         CsvSchema schemaFinal = csvMapper.schemaFor(LinhaMunicipioBoletimCoordenadas.class).withHeader().withColumnSeparator(',');
         List<LinhaMunicipioBoletimCoordenadas> resultado;

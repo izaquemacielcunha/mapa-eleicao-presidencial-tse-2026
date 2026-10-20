@@ -1,5 +1,6 @@
 package com.github.izaquemacielcunha.service.urna.boletim;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
@@ -56,5 +57,50 @@ class BoletimUrnaDownloadServiceTest {
         // Verifica que baixarArquivoBoletimUrnaDat foi chamado apenas 1 vez (para a seção ativa)
         verify(externalService, times(1)).baixarArquivoBoletimUrnaDat(contains("o00407-7535300010010.bu"), eq(config.diretorioBoletins()));
         verify(externalService, never()).baixarArquivoBoletimUrnaDat(contains(StatusSecaoEleitoral.STATUS_INOPERANTE_AGREGADA), any());
+    }
+
+    @Test
+    @DisplayName("Deve reaproveitar arquivo .dat já existente no disco e baixar apenas o faltante")
+    void deveReaproveitarArquivoJaExistenteNoDisco(@TempDir Path tempDir) throws Exception {
+        Path dirBoletins = tempDir.resolve("boletins");
+        Files.createDirectories(dirBoletins);
+
+        EleicaoConfig config = new EleicaoConfig(
+                "PR",
+                "75353",
+                "3220",
+                "ele2026",
+                tempDir,
+                dirBoletins
+        );
+
+        CsvMapper mapper = new CsvMapper();
+        ExternalService externalService = mock(ExternalService.class);
+        TseUrlBuilder urlBuilder = new TseUrlBuilder(config);
+        BoletimUrnaDownloadService service = new BoletimUrnaDownloadServiceImpl(externalService, mapper, urlBuilder, config);
+
+        // Arquivo 1 já existe no disco com dados íntegros
+        Path arquivoJaExistente = dirBoletins.resolve("o00407-7535300010010.bu");
+        Files.writeString(arquivoJaExistente, "conteudo-binario-integro");
+
+        // Prepara CSV enriquecido com duas seções ativas
+        List<LinhaMunicipioEnriquecida> linhas = List.of(
+                new LinhaMunicipioEnriquecida("PR", "75353", "CURITIBA", "1", "10", "hash1", "o00407-7535300010010.bu"),
+                new LinhaMunicipioEnriquecida("PR", "75353", "CURITIBA", "1", "20", "hash2", "o00407-7535300010020.bu")
+        );
+
+        CsvSchema schema = mapper.schemaFor(LinhaMunicipioEnriquecida.class).withHeader();
+        mapper.writer(schema).writeValue(config.arquivoEnriquecidoCsv().toFile(), linhas);
+
+        when(externalService.baixarArquivoBoletimUrnaDat(any(), any()))
+                .thenReturn(Optional.of(dirBoletins.resolve("o00407-7535300010020.bu")));
+
+        service.baixarBoletinsUrna();
+
+        // O arquivo já presente no disco NÃO deve sofrer nova chamada HTTP
+        verify(externalService, never()).baixarArquivoBoletimUrnaDat(contains("o00407-7535300010010.bu"), eq(dirBoletins));
+
+        // Apenas o arquivo faltante deve ser baixado
+        verify(externalService, times(1)).baixarArquivoBoletimUrnaDat(contains("o00407-7535300010020.bu"), eq(dirBoletins));
     }
 }

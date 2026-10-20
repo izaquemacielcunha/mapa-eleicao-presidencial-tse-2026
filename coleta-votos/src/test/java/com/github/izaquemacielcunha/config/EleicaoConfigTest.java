@@ -28,6 +28,7 @@ class EleicaoConfigTest {
         assertEquals(Path.of("temp-files/arquivo-enriquecido.csv"), config.arquivoEnriquecidoCsv());
         assertEquals(Path.of("temp-files/arquivo-boletim-urna.csv"), config.arquivoBoletimUrnaCsv());
         assertEquals(Path.of("temp-files/resultado-mesclado.csv"), config.arquivoResultadoMescladoCsv());
+        assertEquals(Path.of("temp-files/checkpoint-status.json"), config.arquivoCheckpointJson());
         assertEquals(Path.of("dados/eleitorado_local_votacao_2026_PR.csv"), config.arquivoCoordenadasTse());
         assertEquals(Path.of("carto-dataset-final-eleic-presi-2026-1-turn-pr.csv"), config.arquivoCartoFinal());
         assertTrue(config.limparArquivosTemporarios());

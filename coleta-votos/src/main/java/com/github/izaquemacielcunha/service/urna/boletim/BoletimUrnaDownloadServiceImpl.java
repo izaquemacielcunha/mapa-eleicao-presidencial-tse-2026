@@ -1,6 +1,8 @@
 package com.github.izaquemacielcunha.service.urna.boletim;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
@@ -29,7 +31,7 @@ import com.github.izaquemacielcunha.service.tse.TseUrlBuilder;
 public class BoletimUrnaDownloadServiceImpl implements BoletimUrnaDownloadService {
     private static final Logger logger = LoggerFactory.getLogger(BoletimUrnaDownloadServiceImpl.class);
 
-    private record ResultadoDownload(int totalSolicitados, int totalBaixados, int totalInoperantesIgnorados) {}
+    private record ResultadoDownload(int totalSolicitados, int totalBaixados, int totalReaproveitados, int totalInoperantesIgnorados) {}
 
     private final ExternalService externalService;
     private final CsvMapper mapper;
@@ -77,12 +79,20 @@ public class BoletimUrnaDownloadServiceImpl implements BoletimUrnaDownloadServic
         }
 
         AtomicInteger totalBaixados = new AtomicInteger(0);
+        AtomicInteger totalReaproveitados = new AtomicInteger(0);
         AtomicInteger totalInoperantes = new AtomicInteger(0);
 
         linhasOriginais.parallelStream().forEach(linha -> {
             try {
                 if (StatusSecaoEleitoral.isInoperanteOuAgregada(linha.boletimUrna())) {
                     totalInoperantes.incrementAndGet();
+                    return;
+                }
+
+                if (arquivoJaExisteEIntegro(diretorioDestino, linha.boletimUrna())) {
+                    logger.debug("Boletim de urna já baixado e íntegro no disco: {}. Reaproveitando.", linha.boletimUrna());
+                    totalBaixados.incrementAndGet();
+                    totalReaproveitados.incrementAndGet();
                     return;
                 }
 
@@ -102,9 +112,22 @@ public class BoletimUrnaDownloadServiceImpl implements BoletimUrnaDownloadServic
 
         Duration decorrido = Duration.between(inicio, Instant.now());
         logger.info(
-                "Download de boletins concluído em {} ms. Total seções: {} (baixados: {}, inoperantes ignorados: {}).",
-                decorrido.toMillis(), linhasOriginais.size(), totalBaixados.get(), totalInoperantes.get());
+                "Download de boletins concluído em {} ms. Total seções: {} (baixados/reaproveitados: {}, reaproveitados do disco: {}, inoperantes ignorados: {}).",
+                decorrido.toMillis(), linhasOriginais.size(), totalBaixados.get(), totalReaproveitados.get(), totalInoperantes.get());
 
-        return new ResultadoDownload(linhasOriginais.size(), totalBaixados.get(), totalInoperantes.get());
+        return new ResultadoDownload(linhasOriginais.size(), totalBaixados.get(), totalReaproveitados.get(), totalInoperantes.get());
+    }
+
+    private boolean arquivoJaExisteEIntegro(Path diretorioDestino, String nomeArquivo) {
+        if (nomeArquivo == null || nomeArquivo.isBlank()) {
+            return false;
+        }
+        Path arquivo = diretorioDestino.resolve(nomeArquivo);
+        try {
+            return Files.exists(arquivo) && Files.isRegularFile(arquivo) && Files.size(arquivo) > 0;
+        } catch (IOException e) {
+            logger.warn("Erro ao inspecionar arquivo existente no disco {}: {}", arquivo, e.getMessage());
+            return false;
+        }
     }
 }

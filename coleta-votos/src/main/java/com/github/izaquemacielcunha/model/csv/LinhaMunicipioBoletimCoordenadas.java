@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 @JsonPropertyOrder({
         "SG_UF", "CD_MUNICIPIO", "NM_MUNICIPIO", "NR_ZONA", "NR_SECAO",
-        "NM_BAIRRO", "NM_LOCAL_VOTACAO", "latitude", "longitude",
+        "NM_BAIRRO", "NM_LOCAL_VOTACAO", "LATITUDE", "LONGITUDE",
         "CANDIDATO", "QTD_VOTOS", "BOLETIM_URNA"
 })
 public record LinhaMunicipioBoletimCoordenadas(
@@ -16,8 +16,8 @@ public record LinhaMunicipioBoletimCoordenadas(
         @JsonProperty("NR_SECAO") String numeroSecao,
         @JsonProperty("NM_BAIRRO") String nomeBairro,
         @JsonProperty("NM_LOCAL_VOTACAO") String localVotacao,
-        @JsonProperty("latitude") String latitude,
-        @JsonProperty("longitude") String longitude,
+        @JsonProperty("LATITUDE") String latitude,
+        @JsonProperty("LONGITUDE") String longitude,
         @JsonProperty("CANDIDATO") String candidato,
         @JsonProperty("QTD_VOTOS") int votos,
         @JsonProperty("BOLETIM_URNA") String boletimUrna

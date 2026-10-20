@@ -137,6 +137,10 @@ public record EleicaoConfig(
         return diretorioTemp.resolve("resultado-mesclado.csv");
     }
 
+    public Path arquivoCheckpointJson() {
+        return diretorioTemp.resolve("checkpoint-status.json");
+    }
+
     public Path arquivoCartoFinal() {
         return Path.of(String.format("carto-dataset-final-eleic-presi-2026-1-turn-%s.csv", uf.toLowerCase()));
     }

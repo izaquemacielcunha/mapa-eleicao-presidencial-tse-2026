@@ -10,6 +10,8 @@ import com.github.izaquemacielcunha.service.ExternalService;
 import com.github.izaquemacielcunha.service.ExternalServiceImpl;
 import com.github.izaquemacielcunha.service.LimpezaArquivosTemporariosService;
 import com.github.izaquemacielcunha.service.LimpezaArquivosTemporariosServiceImpl;
+import com.github.izaquemacielcunha.service.checkpoint.PipelineCheckpointService;
+import com.github.izaquemacielcunha.service.checkpoint.PipelineCheckpointServiceImpl;
 import com.github.izaquemacielcunha.service.csv.CsvBoletimUrnaService;
 import com.github.izaquemacielcunha.service.csv.CsvBoletimUrnaServiceImpl;
 import com.github.izaquemacielcunha.service.csv.CsvCartoExportadorService;
@@ -27,6 +29,10 @@ import com.github.izaquemacielcunha.service.urna.boletim.BoletimUrnaServiceImpl;
 
 @Module
 public abstract class ServiceModule {
+
+    @Binds
+    @Singleton
+    public abstract PipelineCheckpointService bindPipelineCheckpointService(PipelineCheckpointServiceImpl impl);
 
     @Binds
     @Singleton

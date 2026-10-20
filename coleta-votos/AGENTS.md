@@ -8,10 +8,10 @@ Este documento orienta agentes autônomos e desenvolvedores nas manutenções, m
 
 O **coleta-votos** é uma ferramenta de ETL em linha de comando projetada para extrair, decodificar, enriquecer e agregar dados eleitorais do Tribunal Superior Eleitoral (TSE). 
 
-O pipeline divide-se em 7 fases sequenciais orquestradas pelo `EleicaoPipelineService`:
+O pipeline divide-se em 7 fases sequenciais orquestradas pelo `EleicaoPipelineService` (com resiliência por checkpoint):
 1. **`[Fase 1/7 - Estrutura Seções]` (`gerarEstruturaSecoesMunicipais()`):** Consulta metadados de seções e zonas do município via API oficial do TSE (`TseUrlBuilder`) e gera o CSV inicial.
 2. **`[Fase 2/7 - Enriquecimento Metadados]` (`enriquecerMetadadosSecoes()`):** Consulta metadados específicos para cada seção, identificando os hashes dos arquivos de urna e tratando seções agregadas/inoperantes.
-3. **`[Fase 3/7 - Download Boletins]` (`baixarBoletinsUrna()`):** Realiza o download concorrente com taxa controlada (`RateLimiter`) dos arquivos binários de urna.
+3. **`[Fase 3/7 - Download Boletins]` (`baixarBoletinsUrna()`):** Realiza o download concorrente com taxa controlada (`RateLimiter`) dos arquivos binários de urna (reaproveitando arquivos `.dat` íntegros pré-existentes no disco).
 4. **`[Fase 4/7 - Apuração Votos]` (`apurarVotosBoletins()`):** Decodifica a estrutura ASN.1 dos arquivos `.dat` (usando `asn1bean`) e totaliza votos válidos para Presidente.
 5. **`[Fase 5/7 - Mesclagem Votos]` (`mesclarVotosComSecoes()`):** Combina dados territoriais enriquecidos com a apuração dos votos.
 6. **`[Fase 6/7 - Exportação Carto]` (`exportarDatasetGeorreferenciadoParaCarto()`):** Cruza os boletins agregados com dados geoespaciais (latitude, longitude, bairro e local de votação) para gerar o dataset pronto para Carto.com.
@@ -85,10 +85,17 @@ java -jar target/coleta-votos.jar PR 75353 ./dados/eleitorado_local_votacao_2026
 ### Injeção de Dependência (Dagger) e Contratos de Serviço
 
 * **Padrão Interface + Implementação (`*Service` / `*ServiceImpl`):** Todos os serviços de domínio devem expor uma interface pública desacoplada e uma classe concreta implementadora com sufixo `Impl` anotada com `@Inject`. Consumidores e orquestradores devem depender exclusivamente das interfaces.
-* **Vínculo com `@Binds` no `ServiceModule`:** Novos serviços devem ser registrados no módulo abstrato `ServiceModule` via anotação `@Binds` e escopo `@Singleton`. Evite `@Provides` com instanciações manuais para classes com construtor `@Inject`.
+* **Vínculo com `@Binds` no `ServiceModule`:** Novos serviços devem ser registrados no módulo abstrato `ServiceModule` via anotação `@Binds` e escopo `@Singleton`. Ao injetar uma nova interface em um serviço já existente no grafo, registre o `@Binds` no `ServiceModule` no mesmo ciclo para evitar erros de `[Dagger/MissingBinding]`.
 * **Configuração via CLI (`EleicaoConfig`):** O aplicativo recebe parâmetros de linha de comando (`UF`, `CODIGO_MUNICIPIO`, `CAMINHO_ARQUIVO_COORDENADAS` e opcionalmente `LIMPAR_ARQUIVOS_TEMPORARIOS`, padrão `true`) parseados e validados no record `EleicaoConfig.fromArgs(args)`, injetado no grafo via `@BindsInstance` na fábrica de `ApplicationComponent`. Exemplo de uso: `java App PR 75353 ./dados/eleitorado_local_votacao_2026_PR.csv false`.
 * **Caminhos Dinâmicos e `java.nio.file.Path`:** Centralize a resolução de diretórios de trabalho (`temp-files/`, diretório de boletins e nomes de CSVs gerados parametrizados pela UF) no `EleicaoConfig`. O arquivo de coordenadas do TSE é fornecido explicitamente como parâmetro de entrada, enquanto os arquivos temporários são gerados pelo próprio pipeline. Use sempre `Path` e nunca espalhe caminhos fixos (*hardcoded*) nas classes de serviço.
 * **Orquestrador Central:** O `App.java` deve ser mínimo (apenas instanciar a configuração, obter o componente Dagger e chamar `pipelineService.executar()`). A coordenação das fases pertence ao `EleicaoPipelineService`.
+
+### Resiliência e Checkpoints (`PipelineCheckpointService`)
+
+* **Dois níveis de tolerância a falhas:**
+  - **Macro (Fases 1 a 6):** As etapas concluídas são persistidas atomicamente em `temp-files/checkpoint-status.json`. Ao reiniciar, uma etapa só é pulada se constar no manifesto **e** seu artefato de saída físico existir no disco com tamanho $> 0$. Qualquer divergência de contexto (`UF`, `codigoMunicipio` ou `codigoPleito`) descarta automaticamente o checkpoint anterior.
+  - **Micro (Fase 3 - Download de `.dat`):** Se a fase falhar por timeout ou queda de rede, arquivos `.dat` já existentes no disco e íntegros são automaticamente reaproveitados, baixando apenas as urnas faltantes.
+* **Evolução de Fases:** Ao adicionar uma nova etapa ao pipeline, deve-se registrar o item correspondente em `EtapaPipeline` e implementar a validação do seu artefato físico em `PipelineCheckpointServiceImpl.validarArtefatoFisico()`.
 
 ### Encapsulamento Rígido e Nomenclatura Expressiva
 
@@ -109,6 +116,7 @@ java -jar target/coleta-votos.jar PR 75353 ./dados/eleitorado_local_votacao_2026
 * **Streaming com Jackson 3.x:** Utilize as APIs de streaming do Jackson 3.x (`CsvMapper`, `MappingIterator`, `SequenceWriter`) para lidar com grandes volumes de votos sem esgotar a memória heap (`OutOfMemoryError`).
 * **Exceções do Jackson 3.x:** No Jackson 3.x, operações de streaming lançam `JacksonException` (unchecked). Empregue o tratamento adequado convertendo para `EleicaoDataProcessingException`.
 * **Delimitadores e Charsets:** Os arquivos de coordenadas do TSE usam delimitador `;` e codificação `ISO-8859-1`, enquanto os arquivos intermediários e o dataset final gerado para o Carto usam delimitador `,` e `UTF-8`.
+* **Convenção de Cabeçalho Carto:** Todas as colunas do dataset final (`LinhaMunicipioBoletimCoordenadas`) devem manter os nomes estritamente em maiúsculas (ex: `LATITUDE`, `LONGITUDE`, `CANDIDATO`, `QTD_VOTOS`), sem mesclar com termos em minúsculas.
 * **Formatação de Latitude e Longitude (KISS):**
   - Para ferramentas GIS e Carto.com, as coordenadas devem estar no formato decimal padrão com ponto (ex: `-25.4759288` e `-49.1950276`).
   - O dado bruto do TSE vem com vírgula (`-25,4759288`), portanto um simples `replace(",", ".")` é suficiente.

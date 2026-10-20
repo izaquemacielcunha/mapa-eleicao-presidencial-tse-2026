@@ -17,7 +17,9 @@ import com.github.izaquemacielcunha.config.EleicaoConfig;
 import com.github.izaquemacielcunha.exception.EleicaoDataProcessingException;
 import com.github.izaquemacielcunha.model.Abrangencia;
 import com.github.izaquemacielcunha.model.Municipio;
+import com.github.izaquemacielcunha.model.checkpoint.EtapaPipeline;
 import com.github.izaquemacielcunha.model.urna.boletim.ResumoVotacao;
+import com.github.izaquemacielcunha.service.checkpoint.PipelineCheckpointService;
 import com.github.izaquemacielcunha.service.csv.CsvBoletimUrnaService;
 import com.github.izaquemacielcunha.service.csv.CsvCartoExportadorService;
 import com.github.izaquemacielcunha.service.csv.CsvEnriquecedorService;
@@ -42,6 +44,7 @@ public class EleicaoPipelineServiceImpl implements EleicaoPipelineService {
     private final CsvMescladorBoletimService csvMescladorBoletimService;
     private final CsvCartoExportadorService csvCartoExportadorService;
     private final LimpezaArquivosTemporariosService limpezaArquivosTemporariosService;
+    private final PipelineCheckpointService checkpointService;
 
     @Inject
     public EleicaoPipelineServiceImpl(
@@ -55,7 +58,8 @@ public class EleicaoPipelineServiceImpl implements EleicaoPipelineService {
             CsvBoletimUrnaService csvBoletimUrnaService,
             CsvMescladorBoletimService csvMescladorBoletimService,
             CsvCartoExportadorService csvCartoExportadorService,
-            LimpezaArquivosTemporariosService limpezaArquivosTemporariosService
+            LimpezaArquivosTemporariosService limpezaArquivosTemporariosService,
+            PipelineCheckpointService checkpointService
     ) {
         this.config = Objects.requireNonNull(config, "EleicaoConfig não pode ser nulo");
         this.externalService = Objects.requireNonNull(externalService, "ExternalService não pode ser nulo");
@@ -68,6 +72,7 @@ public class EleicaoPipelineServiceImpl implements EleicaoPipelineService {
         this.csvMescladorBoletimService = Objects.requireNonNull(csvMescladorBoletimService, "CsvMescladorBoletimService não pode ser nulo");
         this.csvCartoExportadorService = Objects.requireNonNull(csvCartoExportadorService, "CsvCartoExportadorService não pode ser nulo");
         this.limpezaArquivosTemporariosService = Objects.requireNonNull(limpezaArquivosTemporariosService, "LimpezaArquivosTemporariosService não pode ser nulo");
+        this.checkpointService = Objects.requireNonNull(checkpointService, "PipelineCheckpointService não pode ser nulo");
     }
 
     @Override
@@ -76,18 +81,29 @@ public class EleicaoPipelineServiceImpl implements EleicaoPipelineService {
         logger.info("Iniciando pipeline de coleta de votos do TSE para {}/{}...", config.uf(), config.codigoMunicipio());
 
         validarPreCondicoes();
-        gerarEstruturaSecoesMunicipais();
-        enriquecerMetadadosSecoes();
-        baixarBoletinsUrna();
-        apurarVotosBoletins();
-        mesclarVotosComSecoes();
-        exportarDatasetGeorreferenciadoParaCarto();
+        checkpointService.prepararContextoExecucao();
+
+        executarEtapaComCheckpoint(EtapaPipeline.ESTRUTURA_SECOES, this::gerarEstruturaSecoesMunicipais);
+        executarEtapaComCheckpoint(EtapaPipeline.ENRIQUECIMENTO_METADADOS, this::enriquecerMetadadosSecoes);
+        executarEtapaComCheckpoint(EtapaPipeline.DOWNLOAD_BOLETINS, this::baixarBoletinsUrna);
+        executarEtapaComCheckpoint(EtapaPipeline.APURACAO_VOTOS, this::apurarVotosBoletins);
+        executarEtapaComCheckpoint(EtapaPipeline.MESCLAGEM_VOTOS, this::mesclarVotosComSecoes);
+        executarEtapaComCheckpoint(EtapaPipeline.EXPORTACAO_CARTO, this::exportarDatasetGeorreferenciadoParaCarto);
         limparArquivosTemporarios();
 
         Duration tempoTotal = Duration.between(inicioGeral, Instant.now());
         logger.info(
                 "Pipeline eleitoral concluído com sucesso em {} ms! Arquivo pronto para o Carto.com em: {}",
                 tempoTotal.toMillis(), config.arquivoCartoFinal().toAbsolutePath());
+    }
+
+    private void executarEtapaComCheckpoint(EtapaPipeline etapa, Runnable acaoEtapa) {
+        if (checkpointService.isEtapaConcluida(etapa)) {
+            logger.info("[Checkpoint] Etapa {} ({}) já concluída anteriormente com artefatos válidos. Pulando execução...", etapa, etapa.descricao());
+            return;
+        }
+        acaoEtapa.run();
+        checkpointService.registrarEtapaConcluida(etapa);
     }
 
     private void validarPreCondicoes() {

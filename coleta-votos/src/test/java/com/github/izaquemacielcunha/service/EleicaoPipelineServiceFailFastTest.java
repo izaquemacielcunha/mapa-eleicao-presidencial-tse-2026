@@ -6,6 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.github.izaquemacielcunha.config.EleicaoConfig;
+import com.github.izaquemacielcunha.service.checkpoint.PipelineCheckpointService;
 import com.github.izaquemacielcunha.service.csv.CsvBoletimUrnaService;
 import com.github.izaquemacielcunha.service.csv.CsvCartoExportadorService;
 import com.github.izaquemacielcunha.service.csv.CsvEnriquecedorService;
@@ -37,6 +38,7 @@ class EleicaoPipelineServiceFailFastTest {
         );
 
         LimpezaArquivosTemporariosService limpezaService = mock(LimpezaArquivosTemporariosService.class);
+        PipelineCheckpointService checkpointService = mock(PipelineCheckpointService.class);
 
         EleicaoPipelineService service = new EleicaoPipelineServiceImpl(
                 configInexistente,
@@ -49,7 +51,8 @@ class EleicaoPipelineServiceFailFastTest {
                 mock(CsvBoletimUrnaService.class),
                 mock(CsvMescladorBoletimService.class),
                 mock(CsvCartoExportadorService.class),
-                limpezaService
+                limpezaService,
+                checkpointService
         );
 
         IllegalStateException exception = assertThrows(IllegalStateException.class, service::executar);
