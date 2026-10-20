@@ -10,7 +10,8 @@ public record EleicaoConfig(
         String cicloEleitoral,
         Path diretorioTemp,
         Path diretorioBoletins,
-        Path arquivoCoordenadasTse
+        Path arquivoCoordenadasTse,
+        boolean limparArquivosTemporarios
 ) {
     public static final String DEFAULT_UF = "PR";
     public static final String DEFAULT_COD_MUNICIPIO = "75353";
@@ -19,6 +20,7 @@ public record EleicaoConfig(
     public static final Path DEFAULT_DIR_TEMP = Path.of("temp-files");
     public static final Path DEFAULT_DIR_BOLETINS = Path.of("temp-files/boletins-urnas");
     public static final Path DEFAULT_ARQUIVO_COORDENADAS = Path.of("dados/eleitorado_local_votacao_2026_PR.csv");
+    public static final boolean DEFAULT_LIMPAR_ARQUIVOS_TEMPORARIOS = true;
 
     public EleicaoConfig {
         Objects.requireNonNull(uf, "UF não pode ser nula");
@@ -48,6 +50,27 @@ public record EleicaoConfig(
             String codigoPleito,
             String cicloEleitoral,
             Path diretorioTemp,
+            Path diretorioBoletins,
+            Path arquivoCoordenadasTse
+    ) {
+        this(
+                uf,
+                codigoMunicipio,
+                codigoPleito,
+                cicloEleitoral,
+                diretorioTemp,
+                diretorioBoletins,
+                arquivoCoordenadasTse,
+                DEFAULT_LIMPAR_ARQUIVOS_TEMPORARIOS
+        );
+    }
+
+    public EleicaoConfig(
+            String uf,
+            String codigoMunicipio,
+            String codigoPleito,
+            String cicloEleitoral,
+            Path diretorioTemp,
             Path diretorioBoletins
     ) {
         this(
@@ -57,16 +80,21 @@ public record EleicaoConfig(
                 cicloEleitoral,
                 diretorioTemp,
                 diretorioBoletins,
-                DEFAULT_ARQUIVO_COORDENADAS
+                DEFAULT_ARQUIVO_COORDENADAS,
+                DEFAULT_LIMPAR_ARQUIVOS_TEMPORARIOS
         );
     }
 
     public static EleicaoConfig fromArgs(String[] args) {
         if (args == null || args.length < 3) {
             throw new IllegalArgumentException(
-                    "Parâmetros insuficientes. Uso: java App <UF> <CODIGO_MUNICIPIO> <CAMINHO_ARQUIVO_COORDENADAS> " +
-                    "(ex: java App PR 75353 ./dados/eleitorado_local_votacao_2026_PR.csv)"
+                    "Parâmetros insuficientes. Uso: java App <UF> <CODIGO_MUNICIPIO> <CAMINHO_ARQUIVO_COORDENADAS> [LIMPAR_ARQUIVOS_TEMPORARIOS] " +
+                    "(ex: java App PR 75353 ./dados/eleitorado_local_votacao_2026_PR.csv [true|false])"
             );
+        }
+        boolean limparArquivos = DEFAULT_LIMPAR_ARQUIVOS_TEMPORARIOS;
+        if (args.length >= 4 && args[3] != null && !args[3].isBlank()) {
+            limparArquivos = Boolean.parseBoolean(args[3].trim());
         }
         return new EleicaoConfig(
                 args[0],
@@ -75,7 +103,8 @@ public record EleicaoConfig(
                 DEFAULT_CICLO,
                 DEFAULT_DIR_TEMP,
                 DEFAULT_DIR_BOLETINS,
-                Path.of(args[2])
+                Path.of(args[2]),
+                limparArquivos
         );
     }
 
@@ -87,7 +116,8 @@ public record EleicaoConfig(
                 DEFAULT_CICLO,
                 DEFAULT_DIR_TEMP,
                 DEFAULT_DIR_BOLETINS,
-                DEFAULT_ARQUIVO_COORDENADAS
+                DEFAULT_ARQUIVO_COORDENADAS,
+                DEFAULT_LIMPAR_ARQUIVOS_TEMPORARIOS
         );
     }
 

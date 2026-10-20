@@ -40,6 +40,7 @@ class EleicaoPipelineServiceTest {
     private CsvBoletimUrnaService csvBoletimUrnaService;
     private CsvMescladorBoletimService csvMescladorBoletimService;
     private CsvCartoExportadorService csvCartoExportadorService;
+    private LimpezaArquivosTemporariosService limpezaArquivosTemporariosService;
 
     @BeforeEach
     void setUp() {
@@ -52,6 +53,7 @@ class EleicaoPipelineServiceTest {
         csvBoletimUrnaService = mock(CsvBoletimUrnaService.class);
         csvMescladorBoletimService = mock(CsvMescladorBoletimService.class);
         csvCartoExportadorService = mock(CsvCartoExportadorService.class);
+        limpezaArquivosTemporariosService = mock(LimpezaArquivosTemporariosService.class);
     }
 
     @Test
@@ -83,7 +85,8 @@ class EleicaoPipelineServiceTest {
                 boletimUrnaService,
                 csvBoletimUrnaService,
                 csvMescladorBoletimService,
-                csvCartoExportadorService
+                csvCartoExportadorService,
+                limpezaArquivosTemporariosService
         );
 
         IllegalStateException ex = assertThrows(IllegalStateException.class, pipeline::executar);
@@ -92,10 +95,11 @@ class EleicaoPipelineServiceTest {
         // Garante que fases posteriores não foram executadas
         verify(csvEnriquecedorService, never()).enriquecerMetadadosSecoes();
         verify(boletimUrnaDownloader, never()).baixarBoletinsUrna();
+        verify(limpezaArquivosTemporariosService, never()).limparArquivosTemporarios();
     }
 
     @Test
-    @DisplayName("executar deve orquestrar sequencialmente as etapas do pipeline com sucesso")
+    @DisplayName("executar deve orquestrar sequencialmente as etapas do pipeline com sucesso incluindo limpeza final")
     void deveOrquestrarComSucessoTodasAsFases(@TempDir Path tempDir) throws Exception {
         Path arquivoCoords = tempDir.resolve("coords-tse.csv");
         Files.createFile(arquivoCoords);
@@ -127,7 +131,8 @@ class EleicaoPipelineServiceTest {
                 boletimUrnaService,
                 csvBoletimUrnaService,
                 csvMescladorBoletimService,
-                csvCartoExportadorService
+                csvCartoExportadorService,
+                limpezaArquivosTemporariosService
         );
 
         pipeline.executar();
@@ -141,7 +146,8 @@ class EleicaoPipelineServiceTest {
                 boletimUrnaService,
                 csvBoletimUrnaService,
                 csvMescladorBoletimService,
-                csvCartoExportadorService
+                csvCartoExportadorService,
+                limpezaArquivosTemporariosService
         );
 
         inOrder.verify(externalService).buscarConfiguracaoMunicipio(anyString(), eq("75353"));
@@ -157,5 +163,6 @@ class EleicaoPipelineServiceTest {
                 eq(config.arquivoCartoFinal()),
                 eq(config.codigoMunicipio())
         );
+        inOrder.verify(limpezaArquivosTemporariosService).limparArquivosTemporarios();
     }
 }

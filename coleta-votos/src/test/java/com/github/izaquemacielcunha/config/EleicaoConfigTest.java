@@ -6,7 +6,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class EleicaoConfigTest {
 
@@ -28,10 +30,11 @@ class EleicaoConfigTest {
         assertEquals(Path.of("temp-files/resultado-mesclado.csv"), config.arquivoResultadoMescladoCsv());
         assertEquals(Path.of("dados/eleitorado_local_votacao_2026_PR.csv"), config.arquivoCoordenadasTse());
         assertEquals(Path.of("carto-dataset-final-eleic-presi-2026-1-turn-pr.csv"), config.arquivoCartoFinal());
+        assertTrue(config.limparArquivosTemporarios());
     }
 
     @Test
-    @DisplayName("Deve extrair UF, Município e caminho do arquivo de coordenadas a partir dos argumentos da CLI")
+    @DisplayName("Deve extrair UF, Município e caminho do arquivo de coordenadas a partir dos argumentos da CLI com limpeza ativada por padrão")
     void deveExtrairParametrosCli() {
         EleicaoConfig config = EleicaoConfig.fromArgs(new String[]{"sc", "80000", "meus-dados/coords_sc.csv"});
 
@@ -39,6 +42,17 @@ class EleicaoConfigTest {
         assertEquals("80000", config.codigoMunicipio());
         assertEquals(Path.of("meus-dados/coords_sc.csv"), config.arquivoCoordenadasTse());
         assertEquals(Path.of("carto-dataset-final-eleic-presi-2026-1-turn-sc.csv"), config.arquivoCartoFinal());
+        assertTrue(config.limparArquivosTemporarios());
+    }
+
+    @Test
+    @DisplayName("Deve permitir configurar limpeza de arquivos temporários via quarto argumento da CLI")
+    void deveConfigurarLimpezaArquivosTemporariosViaCli() {
+        EleicaoConfig configComLimpezaFalsa = EleicaoConfig.fromArgs(new String[]{"sc", "80000", "meus-dados/coords_sc.csv", "false"});
+        assertFalse(configComLimpezaFalsa.limparArquivosTemporarios());
+
+        EleicaoConfig configComLimpezaVerdadeira = EleicaoConfig.fromArgs(new String[]{"sc", "80000", "meus-dados/coords_sc.csv", "true"});
+        assertTrue(configComLimpezaVerdadeira.limparArquivosTemporarios());
     }
 
     @Test

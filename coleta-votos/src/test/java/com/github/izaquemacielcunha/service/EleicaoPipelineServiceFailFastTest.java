@@ -2,11 +2,24 @@ package com.github.izaquemacielcunha.service;
 
 import java.nio.file.Path;
 
-import com.github.izaquemacielcunha.config.EleicaoConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import com.github.izaquemacielcunha.config.EleicaoConfig;
+import com.github.izaquemacielcunha.service.csv.CsvBoletimUrnaService;
+import com.github.izaquemacielcunha.service.csv.CsvCartoExportadorService;
+import com.github.izaquemacielcunha.service.csv.CsvEnriquecedorService;
+import com.github.izaquemacielcunha.service.csv.CsvMescladorBoletimService;
+import com.github.izaquemacielcunha.service.csv.CsvSecaoService;
+import com.github.izaquemacielcunha.service.tse.TseUrlBuilder;
+import com.github.izaquemacielcunha.service.urna.boletim.BoletimUrnaDownloadService;
+import com.github.izaquemacielcunha.service.urna.boletim.BoletimUrnaService;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 class EleicaoPipelineServiceFailFastTest {
 
@@ -23,20 +36,24 @@ class EleicaoPipelineServiceFailFastTest {
                 Path.of("dados-inexistentes/coords_zz.csv")
         );
 
+        LimpezaArquivosTemporariosService limpezaService = mock(LimpezaArquivosTemporariosService.class);
+
         EleicaoPipelineService service = new EleicaoPipelineServiceImpl(
                 configInexistente,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null
+                mock(ExternalService.class),
+                mock(TseUrlBuilder.class),
+                mock(CsvSecaoService.class),
+                mock(CsvEnriquecedorService.class),
+                mock(BoletimUrnaDownloadService.class),
+                mock(BoletimUrnaService.class),
+                mock(CsvBoletimUrnaService.class),
+                mock(CsvMescladorBoletimService.class),
+                mock(CsvCartoExportadorService.class),
+                limpezaService
         );
 
         IllegalStateException exception = assertThrows(IllegalStateException.class, service::executar);
         assertTrue(exception.getMessage().contains("Arquivo de coordenadas do TSE não encontrado"));
+        verify(limpezaService, never()).limparArquivosTemporarios();
     }
 }

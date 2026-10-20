@@ -8,13 +8,14 @@ Este documento orienta agentes autônomos e desenvolvedores nas manutenções, m
 
 O **coleta-votos** é uma ferramenta de ETL em linha de comando projetada para extrair, decodificar, enriquecer e agregar dados eleitorais do Tribunal Superior Eleitoral (TSE). 
 
-O pipeline divide-se em 6 fases sequenciais orquestradas pelo `EleicaoPipelineService`:
-1. **`[Fase 1/6 - Estrutura Seções]` (`gerarEstruturaSecoesMunicipais()`):** Consulta metadados de seções e zonas do município via API oficial do TSE (`TseUrlBuilder`) e gera o CSV inicial.
-2. **`[Fase 2/6 - Enriquecimento Metadados]` (`enriquecerMetadadosSecoes()`):** Consulta metadados específicos para cada seção, identificando os hashes dos arquivos de urna e tratando seções agregadas/inoperantes.
-3. **`[Fase 3/6 - Download Boletins]` (`baixarBoletinsUrna()`):** Realiza o download concorrente com taxa controlada (`RateLimiter`) dos arquivos binários de urna.
-4. **`[Fase 4/6 - Apuração Votos]` (`apurarVotosBoletins()`):** Decodifica a estrutura ASN.1 dos arquivos `.dat` (usando `asn1bean`) e totaliza votos válidos para Presidente.
-5. **`[Fase 5/6 - Mesclagem Votos]` (`mesclarVotosComSecoes()`):** Combina dados territoriais enriquecidos com a apuração dos votos.
-6. **`[Fase 6/6 - Exportação Carto]` (`exportarDatasetGeorreferenciadoParaCarto()`):** Cruza os boletins agregados com dados geoespaciais (latitude, longitude, bairro e local de votação) para gerar o dataset pronto para Carto.com.
+O pipeline divide-se em 7 fases sequenciais orquestradas pelo `EleicaoPipelineService`:
+1. **`[Fase 1/7 - Estrutura Seções]` (`gerarEstruturaSecoesMunicipais()`):** Consulta metadados de seções e zonas do município via API oficial do TSE (`TseUrlBuilder`) e gera o CSV inicial.
+2. **`[Fase 2/7 - Enriquecimento Metadados]` (`enriquecerMetadadosSecoes()`):** Consulta metadados específicos para cada seção, identificando os hashes dos arquivos de urna e tratando seções agregadas/inoperantes.
+3. **`[Fase 3/7 - Download Boletins]` (`baixarBoletinsUrna()`):** Realiza o download concorrente com taxa controlada (`RateLimiter`) dos arquivos binários de urna.
+4. **`[Fase 4/7 - Apuração Votos]` (`apurarVotosBoletins()`):** Decodifica a estrutura ASN.1 dos arquivos `.dat` (usando `asn1bean`) e totaliza votos válidos para Presidente.
+5. **`[Fase 5/7 - Mesclagem Votos]` (`mesclarVotosComSecoes()`):** Combina dados territoriais enriquecidos com a apuração dos votos.
+6. **`[Fase 6/7 - Exportação Carto]` (`exportarDatasetGeorreferenciadoParaCarto()`):** Cruza os boletins agregados com dados geoespaciais (latitude, longitude, bairro e local de votação) para gerar o dataset pronto para Carto.com.
+7. **`[Fase 7/7 - Limpeza Temporários]` (`limparArquivosTemporarios()`):** Remove recursivamente a pasta raiz temporária (`temp-files/`) e todos os arquivos intermediários (`.dat` e `.csv`), preservando o dataset final e o arquivo de coordenadas.
 
 ---
 
@@ -55,9 +56,11 @@ mvn clean package
 
 * **Executar a aplicação via JAR:**
 ```bash
-java -jar target/coleta-votos.jar <UF> <CODIGO_MUNICIPIO> <CAMINHO_ARQUIVO_COORDENADAS>
-# Exemplo:
+java -jar target/coleta-votos.jar <UF> <CODIGO_MUNICIPIO> <CAMINHO_ARQUIVO_COORDENADAS> [LIMPAR_ARQUIVOS_TEMPORARIOS]
+# Exemplo padrão (com limpeza automática):
 java -jar target/coleta-votos.jar PR 75353 ./dados/eleitorado_local_votacao_2026_PR.csv
+# Exemplo para depuração local (preservando a pasta temp-files):
+java -jar target/coleta-votos.jar PR 75353 ./dados/eleitorado_local_votacao_2026_PR.csv false
 ```
 
 ---
@@ -83,7 +86,7 @@ java -jar target/coleta-votos.jar PR 75353 ./dados/eleitorado_local_votacao_2026
 
 * **Padrão Interface + Implementação (`*Service` / `*ServiceImpl`):** Todos os serviços de domínio devem expor uma interface pública desacoplada e uma classe concreta implementadora com sufixo `Impl` anotada com `@Inject`. Consumidores e orquestradores devem depender exclusivamente das interfaces.
 * **Vínculo com `@Binds` no `ServiceModule`:** Novos serviços devem ser registrados no módulo abstrato `ServiceModule` via anotação `@Binds` e escopo `@Singleton`. Evite `@Provides` com instanciações manuais para classes com construtor `@Inject`.
-* **Configuração via CLI (`EleicaoConfig`):** O aplicativo recebe parâmetros de linha de comando obrigatórios (`UF`, `CODIGO_MUNICIPIO` e `CAMINHO_ARQUIVO_COORDENADAS`) parseados e validados no record `EleicaoConfig.fromArgs(args)`, injetado no grafo via `@BindsInstance` na fábrica de `ApplicationComponent`. Exemplo de uso: `java App PR 75353 ./dados/eleitorado_local_votacao_2026_PR.csv`.
+* **Configuração via CLI (`EleicaoConfig`):** O aplicativo recebe parâmetros de linha de comando (`UF`, `CODIGO_MUNICIPIO`, `CAMINHO_ARQUIVO_COORDENADAS` e opcionalmente `LIMPAR_ARQUIVOS_TEMPORARIOS`, padrão `true`) parseados e validados no record `EleicaoConfig.fromArgs(args)`, injetado no grafo via `@BindsInstance` na fábrica de `ApplicationComponent`. Exemplo de uso: `java App PR 75353 ./dados/eleitorado_local_votacao_2026_PR.csv false`.
 * **Caminhos Dinâmicos e `java.nio.file.Path`:** Centralize a resolução de diretórios de trabalho (`temp-files/`, diretório de boletins e nomes de CSVs gerados parametrizados pela UF) no `EleicaoConfig`. O arquivo de coordenadas do TSE é fornecido explicitamente como parâmetro de entrada, enquanto os arquivos temporários são gerados pelo próprio pipeline. Use sempre `Path` e nunca espalhe caminhos fixos (*hardcoded*) nas classes de serviço.
 * **Orquestrador Central:** O `App.java` deve ser mínimo (apenas instanciar a configuração, obter o componente Dagger e chamar `pipelineService.executar()`). A coordenação das fases pertence ao `EleicaoPipelineService`.
 
@@ -110,6 +113,7 @@ java -jar target/coleta-votos.jar PR 75353 ./dados/eleitorado_local_votacao_2026
   - Para ferramentas GIS e Carto.com, as coordenadas devem estar no formato decimal padrão com ponto (ex: `-25.4759288` e `-49.1950276`).
   - O dado bruto do TSE vem com vírgula (`-25,4759288`), portanto um simples `replace(",", ".")` é suficiente.
 * **Fechamento de Recursos:** Sempre feche fluxos de arquivos utilizando declarações `try-with-resources`.
+* **Limpeza da Raiz Temporária e Guardrails (KISS):** A limpeza pós-sucesso atua unicamente sobre a pasta raiz `config.diretorioTemp()`. Novos serviços de I/O nunca devem criar lógica dispersa para subpastas quando a exclusão recursiva da pasta pai já atende, e devem implementar guardrails obrigatórios contra deleção acidental da raiz do sistema operacional, diretório de trabalho atual do projeto (`toAbsolutePath()`) ou arquivos essenciais de entrada/saída.
 
 ### Resiliência, Tráfego Externo e Concorrência
 

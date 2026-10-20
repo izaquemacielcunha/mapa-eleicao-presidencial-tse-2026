@@ -8,6 +8,8 @@ import com.github.izaquemacielcunha.service.EleicaoPipelineService;
 import com.github.izaquemacielcunha.service.EleicaoPipelineServiceImpl;
 import com.github.izaquemacielcunha.service.ExternalService;
 import com.github.izaquemacielcunha.service.ExternalServiceImpl;
+import com.github.izaquemacielcunha.service.LimpezaArquivosTemporariosService;
+import com.github.izaquemacielcunha.service.LimpezaArquivosTemporariosServiceImpl;
 import com.github.izaquemacielcunha.service.csv.CsvBoletimUrnaService;
 import com.github.izaquemacielcunha.service.csv.CsvBoletimUrnaServiceImpl;
 import com.github.izaquemacielcunha.service.csv.CsvCartoExportadorService;
@@ -61,4 +63,9 @@ public abstract class ServiceModule {
     @Binds
     @Singleton
     public abstract CsvCartoExportadorService bindCsvCartoExportadorService(CsvCartoExportadorServiceImpl impl);
+
+    @Binds
+    @Singleton
+    public abstract LimpezaArquivosTemporariosService bindLimpezaArquivosTemporariosService(
+            LimpezaArquivosTemporariosServiceImpl impl);
 }
