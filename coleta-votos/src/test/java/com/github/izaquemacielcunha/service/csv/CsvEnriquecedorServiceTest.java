@@ -42,7 +42,7 @@ class CsvEnriquecedorServiceTest {
         CsvMapper mapper = new CsvMapper();
         ExternalService externalService = mock(ExternalService.class);
         TseUrlBuilder urlBuilder = new TseUrlBuilder(config);
-        CsvEnriquecedorService service = new CsvEnriquecedorService(externalService, mapper, urlBuilder, config);
+        CsvEnriquecedorServiceImpl service = new CsvEnriquecedorServiceImpl(externalService, mapper, urlBuilder, config);
 
         LinhaMunicipio linha1 = new LinhaMunicipio("PR", "75353", "CURITIBA", "1", "10");
         LinhaMunicipio linha2 = new LinhaMunicipio("PR", "75353", "CURITIBA", "1", "20");
@@ -68,11 +68,8 @@ class CsvEnriquecedorServiceTest {
         when(externalService.buscarMetadadosSecao(urlBuilder.buildUrlSecaoMetadados(linha3)))
                 .thenReturn(Optional.empty());
 
-        CsvEnriquecedorService.ResultadoEnriquecimento resultado = service.enriquecer();
+        service.enriquecerMetadadosSecoes();
 
-        assertEquals(3, resultado.totalSecoes());
-        assertEquals(2, resultado.totalAtivas());
-        assertEquals(1, resultado.totalInoperantes());
         assertTrue(Files.exists(config.arquivoEnriquecidoCsv()));
 
         // Lê arquivo enriquecido e valida campos

@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CsvBoletimUrnaServiceTest {
 
     @Test
-    @DisplayName("Deve gravar o arquivo de boletim de urna no diretório configurado pelo EleicaoConfig usando processar")
+    @DisplayName("Deve gravar o arquivo de boletim de urna no diretório configurado pelo EleicaoConfig usando exportarVotosParaCsv")
     void deveGravarBoletimUrnaNoDiretorioConfigurado(@TempDir Path baseDir) {
         Path customTempDir = baseDir.resolve("temp-boletins");
         EleicaoConfig config = new EleicaoConfig(
@@ -29,21 +29,21 @@ class CsvBoletimUrnaServiceTest {
         );
 
         CsvMapper mapper = new CsvMapper();
-        CsvBoletimUrnaService service = new CsvBoletimUrnaService(mapper, config);
+        CsvBoletimUrnaService service = new CsvBoletimUrnaServiceImpl(mapper, config);
 
         List<ResumoVotacao> votacoes = List.of(
                 new ResumoVotacao("13", 100, "bu-1.dat"),
                 new ResumoVotacao("22", 80, "bu-1.dat")
         );
 
-        service.processar(votacoes);
+        service.exportarVotosParaCsv(votacoes);
 
         assertTrue(Files.exists(config.arquivoBoletimUrnaCsv()), "O arquivo de votos deve existir no caminho de config");
     }
 
     @Test
-    @DisplayName("Método processarBoletins deve processar com sucesso")
-    void deveProcessarBoletins(@TempDir Path baseDir) {
+    @DisplayName("Método processar legado deve continuar funcionando por compatibilidade")
+    void deveProcessarBoletinsCompatibilidade(@TempDir Path baseDir) {
         Path customTempDir = baseDir.resolve("temp-boletins-2");
         EleicaoConfig config = new EleicaoConfig(
                 "PR",
@@ -55,10 +55,10 @@ class CsvBoletimUrnaServiceTest {
         );
 
         CsvMapper mapper = new CsvMapper();
-        CsvBoletimUrnaService service = new CsvBoletimUrnaService(mapper, config);
+        CsvBoletimUrnaService service = new CsvBoletimUrnaServiceImpl(mapper, config);
 
         List<ResumoVotacao> votacoes = List.of(new ResumoVotacao("13", 50, "bu-2.dat"));
-        service.processarBoletins(votacoes);
+        service.processar(votacoes);
 
         assertTrue(Files.exists(config.arquivoBoletimUrnaCsv()), "O arquivo de votos deve existir");
     }

@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class CsvCartoExportadorServiceTest {
 
     private final CsvMapper csvMapper = new CsvMapper();
-    private final CsvCartoExportadorService service = new CsvCartoExportadorService(csvMapper);
+    private final CsvCartoExportadorServiceImpl service = new CsvCartoExportadorServiceImpl(csvMapper);
 
     @Test
     @DisplayName("Deve exportar dataset do Carto cruzando coordenadas e normalizando latitude/longitude")
@@ -69,5 +69,20 @@ class CsvCartoExportadorServiceTest {
         assertEquals("-49.2733", linha.longitude());
         assertEquals("13", linha.candidato());
         assertEquals(100, linha.votos());
+    }
+
+    @Test
+    @DisplayName("exportarDatasetCarto deve executar o fluxo e gerar o arquivo de destino")
+    void deveExecutarExportarDatasetCarto(@TempDir Path tempDir) throws IOException {
+        Path arquivoCoords = tempDir.resolve("coords.csv");
+        Path arquivoMesclado = tempDir.resolve("mesclado.csv");
+        Path arquivoDestino = tempDir.resolve("carto-dest.csv");
+
+        Files.writeString(arquivoCoords, "SG_UF;CD_MUNICIPIO;NM_MUNICIPIO;NR_ZONA;NR_SECAO;NM_BAIRRO;NR_LATITUDE;NR_LONGITUDE;NM_LOCAL_VOTACAO\n");
+        Files.writeString(arquivoMesclado, "unidadeFederativa,codigoMunicipio,nomeMunicipio,numeroZona,numeroSecao,candidato,votos,hash,boletimUrna\n");
+
+        service.exportarDatasetCarto(arquivoCoords, arquivoMesclado, arquivoDestino, "75353");
+
+        assertEquals(true, Files.exists(arquivoDestino));
     }
 }

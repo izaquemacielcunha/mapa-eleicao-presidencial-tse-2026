@@ -18,7 +18,7 @@ import com.github.izaquemacielcunha.service.csv.CsvBoletimUrnaService;
 import com.github.izaquemacielcunha.service.csv.CsvCartoExportadorService;
 import com.github.izaquemacielcunha.service.csv.CsvEnriquecedorService;
 import com.github.izaquemacielcunha.service.csv.CsvMescladorBoletimService;
-import com.github.izaquemacielcunha.service.csv.CsvService;
+import com.github.izaquemacielcunha.service.csv.CsvSecaoService;
 import com.github.izaquemacielcunha.service.tse.TseUrlBuilder;
 import com.github.izaquemacielcunha.service.urna.boletim.BoletimUrnaDownloadService;
 import com.github.izaquemacielcunha.service.urna.boletim.BoletimUrnaService;
@@ -33,7 +33,7 @@ class EleicaoPipelineServiceTest {
 
     private ExternalService externalService;
     private TseUrlBuilder tseUrlBuilder;
-    private CsvService csvService;
+    private CsvSecaoService csvSecaoService;
     private CsvEnriquecedorService csvEnriquecedorService;
     private BoletimUrnaDownloadService boletimUrnaDownloader;
     private BoletimUrnaService boletimUrnaService;
@@ -45,7 +45,7 @@ class EleicaoPipelineServiceTest {
     void setUp() {
         externalService = mock(ExternalService.class);
         tseUrlBuilder = mock(TseUrlBuilder.class);
-        csvService = mock(CsvService.class);
+        csvSecaoService = mock(CsvSecaoService.class);
         csvEnriquecedorService = mock(CsvEnriquecedorService.class);
         boletimUrnaDownloader = mock(BoletimUrnaDownloadService.class);
         boletimUrnaService = mock(BoletimUrnaService.class);
@@ -71,11 +71,11 @@ class EleicaoPipelineServiceTest {
         when(tseUrlBuilder.buildUrlMunicipioConfig()).thenReturn("https://tse.jus.br/config.json");
         when(externalService.buscarConfiguracaoMunicipio(anyString(), anyString())).thenReturn(Optional.empty());
 
-        EleicaoPipelineService pipeline = new EleicaoPipelineService(
+        EleicaoPipelineService pipeline = new EleicaoPipelineServiceImpl(
                 config,
                 externalService,
                 tseUrlBuilder,
-                csvService,
+                csvSecaoService,
                 csvEnriquecedorService,
                 boletimUrnaDownloader,
                 boletimUrnaService,
@@ -88,12 +88,12 @@ class EleicaoPipelineServiceTest {
         assertTrue(ex.getMessage().contains("Município não encontrado para o código: 99999"));
 
         // Garante que fases posteriores não foram executadas
-        verify(csvEnriquecedorService, never()).enriquecer();
-        verify(boletimUrnaDownloader, never()).baixarBoletins();
+        verify(csvEnriquecedorService, never()).enriquecerMetadadosSecoes();
+        verify(boletimUrnaDownloader, never()).baixarBoletinsUrna();
     }
 
     @Test
-    @DisplayName("executar deve orquestrar sequencialmente as 6 fases do pipeline com sucesso")
+    @DisplayName("executar deve orquestrar sequencialmente as etapas do pipeline com sucesso")
     void deveOrquestrarComSucessoTodasAsFases(@TempDir Path tempDir) throws Exception {
         EleicaoConfig config = new EleicaoConfig(
                 "PR",
@@ -109,19 +109,14 @@ class EleicaoPipelineServiceTest {
         when(tseUrlBuilder.buildUrlMunicipioConfig()).thenReturn("https://tse.jus.br/config.json");
         when(externalService.buscarConfiguracaoMunicipio(anyString(), eq("75353"))).thenReturn(Optional.of(municipio));
 
-        when(csvEnriquecedorService.enriquecer()).thenReturn(new CsvEnriquecedorService.ResultadoEnriquecimento(10, 8, 2));
-        when(boletimUrnaDownloader.baixarBoletins()).thenReturn(new BoletimUrnaDownloadService.ResultadoDownload(10, 8, 2));
         List<ResumoVotacao> resumoVotacao = List.of(new ResumoVotacao("13", 150, "bu-1.dat"));
-        when(boletimUrnaService.processarBoletins(any(Path.class))).thenReturn(resumoVotacao);
-        when(csvMescladorBoletimService.mesclar()).thenReturn(10);
-        when(csvCartoExportadorService.exportar(any(Path.class), any(Path.class), any(Path.class), anyString()))
-                .thenReturn(new CsvCartoExportadorService.ResultadoExportacaoCarto(10, 0));
+        when(boletimUrnaService.processarDiretorio(any(Path.class))).thenReturn(resumoVotacao);
 
-        EleicaoPipelineService pipeline = new EleicaoPipelineService(
+        EleicaoPipelineService pipeline = new EleicaoPipelineServiceImpl(
                 config,
                 externalService,
                 tseUrlBuilder,
-                csvService,
+                csvSecaoService,
                 csvEnriquecedorService,
                 boletimUrnaDownloader,
                 boletimUrnaService,
@@ -135,7 +130,7 @@ class EleicaoPipelineServiceTest {
         // Verifica a ordem estrita de execução das fases
         InOrder inOrder = inOrder(
                 externalService,
-                csvService,
+                csvSecaoService,
                 csvEnriquecedorService,
                 boletimUrnaDownloader,
                 boletimUrnaService,
@@ -145,13 +140,13 @@ class EleicaoPipelineServiceTest {
         );
 
         inOrder.verify(externalService).buscarConfiguracaoMunicipio(anyString(), eq("75353"));
-        inOrder.verify(csvService).gerarCsv(any());
-        inOrder.verify(csvEnriquecedorService).enriquecer();
-        inOrder.verify(boletimUrnaDownloader).baixarBoletins();
-        inOrder.verify(boletimUrnaService).processarBoletins(config.diretorioBoletins());
-        inOrder.verify(csvBoletimUrnaService).processar(resumoVotacao);
-        inOrder.verify(csvMescladorBoletimService).mesclar();
-        inOrder.verify(csvCartoExportadorService).exportar(
+        inOrder.verify(csvSecaoService).exportarSecoesMunicipaisParaCsv(any());
+        inOrder.verify(csvEnriquecedorService).enriquecerMetadadosSecoes();
+        inOrder.verify(boletimUrnaDownloader).baixarBoletinsUrna();
+        inOrder.verify(boletimUrnaService).processarDiretorio(config.diretorioBoletins());
+        inOrder.verify(csvBoletimUrnaService).exportarVotosParaCsv(resumoVotacao);
+        inOrder.verify(csvMescladorBoletimService).mesclarBoletinsComMunicipios();
+        inOrder.verify(csvCartoExportadorService).exportarDatasetCarto(
                 eq(config.arquivoCoordenadasTse()),
                 eq(config.arquivoResultadoMescladoCsv()),
                 eq(config.arquivoCartoFinal()),

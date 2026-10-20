@@ -13,7 +13,7 @@ import com.github.izaquemacielcunha.service.EleicaoPipelineService;
  * Expõe unicamente o orquestrador do pipeline como ponto de entrada principal (SRP).
  */
 @Singleton
-@Component(modules = {NetworkModule.class, MapperModule.class})
+@Component(modules = {NetworkModule.class, MapperModule.class, ServiceModule.class})
 public interface ApplicationComponent {
 
     EleicaoPipelineService pipelineService();

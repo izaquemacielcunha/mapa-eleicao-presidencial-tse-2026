@@ -1,0 +1,189 @@
+package com.github.izaquemacielcunha.service;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.github.izaquemacielcunha.config.EleicaoConfig;
+import com.github.izaquemacielcunha.exception.EleicaoDataProcessingException;
+import com.github.izaquemacielcunha.model.Abrangencia;
+import com.github.izaquemacielcunha.model.Municipio;
+import com.github.izaquemacielcunha.model.urna.boletim.ResumoVotacao;
+import com.github.izaquemacielcunha.service.csv.CsvBoletimUrnaService;
+import com.github.izaquemacielcunha.service.csv.CsvCartoExportadorService;
+import com.github.izaquemacielcunha.service.csv.CsvEnriquecedorService;
+import com.github.izaquemacielcunha.service.csv.CsvMescladorBoletimService;
+import com.github.izaquemacielcunha.service.csv.CsvSecaoService;
+import com.github.izaquemacielcunha.service.tse.TseUrlBuilder;
+import com.github.izaquemacielcunha.service.urna.boletim.BoletimUrnaDownloadService;
+import com.github.izaquemacielcunha.service.urna.boletim.BoletimUrnaService;
+
+@Singleton
+public class EleicaoPipelineServiceImpl implements EleicaoPipelineService {
+    private static final Logger logger = LoggerFactory.getLogger(EleicaoPipelineServiceImpl.class);
+
+    private final EleicaoConfig config;
+    private final ExternalService externalService;
+    private final TseUrlBuilder tseUrlBuilder;
+    private final CsvSecaoService csvSecaoService;
+    private final CsvEnriquecedorService csvEnriquecedorService;
+    private final BoletimUrnaDownloadService boletimUrnaDownloader;
+    private final BoletimUrnaService boletimUrnaService;
+    private final CsvBoletimUrnaService csvBoletimUrnaService;
+    private final CsvMescladorBoletimService csvMescladorBoletimService;
+    private final CsvCartoExportadorService csvCartoExportadorService;
+
+    @Inject
+    public EleicaoPipelineServiceImpl(
+            EleicaoConfig config,
+            ExternalService externalService,
+            TseUrlBuilder tseUrlBuilder,
+            CsvSecaoService csvSecaoService,
+            CsvEnriquecedorService csvEnriquecedorService,
+            BoletimUrnaDownloadService boletimUrnaDownloader,
+            BoletimUrnaService boletimUrnaService,
+            CsvBoletimUrnaService csvBoletimUrnaService,
+            CsvMescladorBoletimService csvMescladorBoletimService,
+            CsvCartoExportadorService csvCartoExportadorService
+    ) {
+        this.config = config;
+        this.externalService = externalService;
+        this.tseUrlBuilder = tseUrlBuilder;
+        this.csvSecaoService = csvSecaoService;
+        this.csvEnriquecedorService = csvEnriquecedorService;
+        this.boletimUrnaDownloader = boletimUrnaDownloader;
+        this.boletimUrnaService = boletimUrnaService;
+        this.csvBoletimUrnaService = csvBoletimUrnaService;
+        this.csvMescladorBoletimService = csvMescladorBoletimService;
+        this.csvCartoExportadorService = csvCartoExportadorService;
+    }
+
+    @Override
+    public void executar() {
+        Instant inicioGeral = Instant.now();
+        logger.info("Iniciando pipeline de coleta de votos do TSE para {}/{}...", config.uf(), config.codigoMunicipio());
+
+        validarPreCondicoes();
+        gerarEstruturaSecoesMunicipais();
+        enriquecerMetadadosSecoes();
+        baixarBoletinsUrna();
+        apurarVotosBoletins();
+        mesclarVotosComSecoes();
+        exportarDatasetGeorreferenciadoParaCarto();
+
+        Duration tempoTotal = Duration.between(inicioGeral, Instant.now());
+        logger.info(
+                "Pipeline eleitoral concluído com sucesso em {} ms! Arquivo pronto para o Carto.com em: {}",
+                tempoTotal.toMillis(), config.arquivoCartoFinal().toAbsolutePath());
+    }
+
+    private void validarPreCondicoes() {
+        Objects.requireNonNull(config, "Configuração eleitoral não pode ser nula");
+        if (!Files.exists(config.arquivoCoordenadasTse())) {
+            throw new IllegalStateException("Arquivo de coordenadas do TSE não encontrado: "
+                    + config.arquivoCoordenadasTse().toAbsolutePath()
+                    + ". Certifique-se de que o arquivo está presente no diretório configurado antes de executar o pipeline.");
+        }
+    }
+
+    private void gerarEstruturaSecoesMunicipais() {
+        Instant inicio = Instant.now();
+        logger.info("[Estrutura Seções] Iniciando obtenção de configuração do município {}/{}...", config.uf(), config.codigoMunicipio());
+
+        try {
+            if (!Files.exists(config.diretorioTemp())) {
+                Files.createDirectories(config.diretorioTemp());
+            }
+        } catch (IOException e) {
+            throw new EleicaoDataProcessingException("Erro ao criar diretório temporário: " + config.diretorioTemp(), e);
+        }
+
+        String urlConfig = tseUrlBuilder.buildUrlMunicipioConfig();
+        Optional<Municipio> resultado = externalService.buscarConfiguracaoMunicipio(urlConfig, config.codigoMunicipio());
+        if (resultado.isEmpty()) {
+            throw new IllegalStateException("Município não encontrado para o código: " + config.codigoMunicipio());
+        }
+
+        Municipio municipio = resultado.get();
+        int totalSecoes = (municipio.zonas() != null)
+                ? municipio.zonas().stream().mapToInt(z -> z.secoes() != null ? z.secoes().size() : 0).sum()
+                : 0;
+
+        Abrangencia abrangencia = new Abrangencia(config.uf(), municipio);
+        csvSecaoService.exportarSecoesMunicipaisParaCsv(List.of(abrangencia));
+
+        Duration decorrido = Duration.between(inicio, Instant.now());
+        logger.info(
+                "[Estrutura Seções] Configuração municipal concluída em {} ms. Total de seções mapeadas: {}.",
+                decorrido.toMillis(), totalSecoes);
+    }
+
+    private void enriquecerMetadadosSecoes() {
+        Instant inicio = Instant.now();
+        logger.info("[Enriquecimento Metadados] Iniciando enriquecimento de seções eleitorais...");
+
+        csvEnriquecedorService.enriquecerMetadadosSecoes();
+
+        Duration decorrido = Duration.between(inicio, Instant.now());
+        logger.info("[Enriquecimento Metadados] Enriquecimento concluído em {} ms.", decorrido.toMillis());
+    }
+
+    private void baixarBoletinsUrna() {
+        Instant inicio = Instant.now();
+        logger.info("[Download BUs] Iniciando download dos Boletins de Urna (BUs)...");
+
+        boletimUrnaDownloader.baixarBoletinsUrna();
+
+        Duration decorrido = Duration.between(inicio, Instant.now());
+        logger.info("[Download BUs] Download dos boletins concluído em {} ms.", decorrido.toMillis());
+    }
+
+    private void apurarVotosBoletins() {
+        Instant inicio = Instant.now();
+        logger.info("[Apuração Votos] Iniciando decodificação ASN.1 e apuração de votos para Presidente...");
+
+        List<ResumoVotacao> votacao = boletimUrnaService.processarDiretorio(config.diretorioBoletins());
+        csvBoletimUrnaService.exportarVotosParaCsv(votacao);
+
+        int totalVotos = votacao.stream().mapToInt(ResumoVotacao::votos).sum();
+        Duration decorrido = Duration.between(inicio, Instant.now());
+        logger.info(
+                "[Apuração Votos] Apuração concluída em {} ms. Total de registros: {}, total de votos apurados: {}.",
+                decorrido.toMillis(), votacao.size(), totalVotos);
+    }
+
+    private void mesclarVotosComSecoes() {
+        Instant inicio = Instant.now();
+        logger.info("[Mesclagem Votos] Iniciando mesclagem dos votos com os dados territoriais...");
+
+        csvMescladorBoletimService.mesclarBoletinsComMunicipios();
+        Duration decorrido = Duration.between(inicio, Instant.now());
+        logger.info("[Mesclagem Votos] Mesclagem de votos concluída em {} ms.", decorrido.toMillis());
+    }
+
+    private void exportarDatasetGeorreferenciadoParaCarto() {
+        Instant inicio = Instant.now();
+        logger.info("[Exportação Carto] Iniciando cruzamento com coordenadas e exportação para o Carto.com...");
+
+        csvCartoExportadorService.exportarDatasetCarto(
+                config.arquivoCoordenadasTse(),
+                config.arquivoResultadoMescladoCsv(),
+                config.arquivoCartoFinal(),
+                config.codigoMunicipio()
+        );
+
+        Duration decorrido = Duration.between(inicio, Instant.now());
+        logger.info(
+                "[Exportação Carto] Exportação concluída em {} ms. Arquivo final: {}",
+                decorrido.toMillis(), config.arquivoCartoFinal().toAbsolutePath());
+    }
+}

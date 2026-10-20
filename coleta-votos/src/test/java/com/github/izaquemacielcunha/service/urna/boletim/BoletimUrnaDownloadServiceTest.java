@@ -16,7 +16,6 @@ import com.github.izaquemacielcunha.model.urna.StatusSecaoEleitoral;
 import com.github.izaquemacielcunha.service.ExternalService;
 import com.github.izaquemacielcunha.service.tse.TseUrlBuilder;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.*;
@@ -38,7 +37,7 @@ class BoletimUrnaDownloadServiceTest {
         CsvMapper mapper = new CsvMapper();
         ExternalService externalService = mock(ExternalService.class);
         TseUrlBuilder urlBuilder = new TseUrlBuilder(config);
-        BoletimUrnaDownloadService service = new BoletimUrnaDownloadService(externalService, mapper, urlBuilder, config);
+        BoletimUrnaDownloadService service = new BoletimUrnaDownloadServiceImpl(externalService, mapper, urlBuilder, config);
 
         // Prepara arquivo enriquecido com uma seção ativa e uma inoperante
         List<LinhaMunicipioEnriquecida> linhas = List.of(
@@ -52,11 +51,7 @@ class BoletimUrnaDownloadServiceTest {
         when(externalService.baixarArquivoBoletimUrnaDat(any(), any()))
                 .thenReturn(Optional.of(tempDir.resolve("o00407-7535300010010.bu")));
 
-        BoletimUrnaDownloadService.ResultadoDownload resultado = service.baixarBoletins();
-
-        assertEquals(2, resultado.totalSolicitados());
-        assertEquals(1, resultado.totalBaixados());
-        assertEquals(1, resultado.totalInoperantesIgnorados());
+        service.baixarBoletinsUrna();
 
         // Verifica que baixarArquivoBoletimUrnaDat foi chamado apenas 1 vez (para a seção ativa)
         verify(externalService, times(1)).baixarArquivoBoletimUrnaDat(contains("o00407-7535300010010.bu"), eq(config.diretorioBoletins()));

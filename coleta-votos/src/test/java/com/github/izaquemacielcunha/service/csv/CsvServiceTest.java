@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CsvServiceTest {
 
     @Test
-    @DisplayName("Deve criar o diretório temp automaticamente e gravar o arquivo temp.csv")
+    @DisplayName("Deve criar o diretório temp automaticamente e gravar o arquivo temp.csv usando exportarSecoesMunicipaisParaCsv")
     void deveCriarDiretorioTempEGravarCsv(@TempDir Path baseDir) {
         Path customTempDir = baseDir.resolve("sub/diretorio/temp");
         EleicaoConfig config = new EleicaoConfig(
@@ -33,14 +33,14 @@ class CsvServiceTest {
         );
 
         CsvMapper mapper = new CsvMapper();
-        CsvService csvService = new CsvService(mapper, config);
+        CsvSecaoService csvService = new CsvSecaoServiceImpl(mapper, config);
 
         Municipio municipio = new Municipio("75353", "CURITIBA", List.of(
                 new Zona("1", List.of(new Secao("10"), new Secao("20")))
         ));
         Abrangencia abrangencia = new Abrangencia("PR", municipio);
 
-        csvService.gerarCsv(List.of(abrangencia));
+        csvService.exportarSecoesMunicipaisParaCsv(List.of(abrangencia));
 
         assertTrue(Files.exists(customTempDir), "O diretório temp deve ser criado automaticamente");
         assertTrue(Files.exists(config.arquivoTempCsv()), "O arquivo temp.csv deve existir");

@@ -16,55 +16,52 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class BoletimUrnaServiceTest {
 
-    private final BoletimUrnaService service = new BoletimUrnaService();
+    private final BoletimUrnaService service = new BoletimUrnaServiceImpl();
 
     @Test
-    @DisplayName("processarBoletins deve retornar lista vazia para diretório vazio")
+    @DisplayName("processarDiretorio deve retornar lista vazia para diretório vazio")
     void deveRetornarListaVaziaParaDiretorioVazio(@TempDir Path tempDir) {
-        List<ResumoVotacao> resultado = service.processarBoletins(tempDir);
+        List<ResumoVotacao> resultado = service.processarDiretorio(tempDir);
         assertEquals(0, resultado.size());
     }
 
     @Test
-    @DisplayName("processarBoletins deve ignorar arquivos que não terminam com .dat")
+    @DisplayName("processarDiretorio deve ignorar arquivos que não terminam com .dat")
     void deveIgnorarArquivosSemExtensaoDat(@TempDir Path tempDir) throws IOException {
         Files.writeString(tempDir.resolve("ignore.txt"), "ignorar");
         Files.writeString(tempDir.resolve("dados.csv"), "col1,col2");
 
-        List<ResumoVotacao> resultado = service.processarBoletins(tempDir);
+        List<ResumoVotacao> resultado = service.processarDiretorio(tempDir);
         assertEquals(0, resultado.size());
     }
 
     @Test
-    @DisplayName("processarBoletins deve retornar lista vazia para diretório inexistente")
+    @DisplayName("processarDiretorio deve retornar lista vazia para diretório inexistente")
     void deveRetornarListaVaziaParaDiretorioInexistente() {
-        List<ResumoVotacao> resultado = service.processarBoletins(Path.of("diretorio-inexistente-12345"));
+        List<ResumoVotacao> resultado = service.processarDiretorio(Path.of("diretorio-inexistente-12345"));
         assertEquals(0, resultado.size());
     }
 
     @Test
-    @DisplayName("processarBoletins deve lançar NullPointerException para argumento nulo")
+    @DisplayName("processarDiretorio deve lançar NullPointerException para argumento nulo")
     void deveLancarExcecaoParaDiretorioNulo() {
-        assertThrows(NullPointerException.class, () -> service.processarBoletins((Path) null));
-        assertThrows(NullPointerException.class, () -> service.processarBoletins((String) null));
+        assertThrows(NullPointerException.class, () -> service.processarDiretorio(null));
     }
 
     @Test
-    @DisplayName("extrairResumoVotacao deve retornar lista vazia quando arquivo não for .dat ou for inexistente")
-    void extrairResumoVotacaoArquivoInvalidoOuInexistente() {
-        List<ResumoVotacao> resultadoNaoDat = service.extrairResumoVotacao("arquivo.txt", "id1");
-        assertTrue(resultadoNaoDat.isEmpty());
-
-        List<ResumoVotacao> resultadoInexistente = service.extrairResumoVotacao("nao_existe.dat", "id2");
-        assertTrue(resultadoInexistente.isEmpty());
+    @DisplayName("processarDiretorio deve retornar lista vazia quando diretório contiver apenas arquivo não .dat")
+    void deveRetornarListaVaziaParaArquivoNaoDat(@TempDir Path tempDir) throws IOException {
+        Files.writeString(tempDir.resolve("arquivo.txt"), "conteudo texto");
+        List<ResumoVotacao> resultado = service.processarDiretorio(tempDir);
+        assertTrue(resultado.isEmpty());
     }
 
     @Test
-    @DisplayName("processarBoletins deve lançar EleicaoDataProcessingException ao encontrar arquivo .dat corrompido")
+    @DisplayName("processarDiretorio deve lançar EleicaoDataProcessingException ao encontrar arquivo .dat corrompido")
     void deveLancarExcecaoParaArquivoDatCorrompido(@TempDir Path tempDir) throws IOException {
         Path arquivoCorrompido = tempDir.resolve("urna-corrompida.dat");
         Files.writeString(arquivoCorrompido, "dados binarios corrompidos que nao sao asn1");
 
-        assertThrows(EleicaoDataProcessingException.class, () -> service.processarBoletins(tempDir));
+        assertThrows(EleicaoDataProcessingException.class, () -> service.processarDiretorio(tempDir));
     }
 }

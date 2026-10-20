@@ -22,7 +22,7 @@ class EleicaoPipelineServiceFailFastTest {
                 Path.of("temp-files-inexistente/boletins")
         );
 
-        EleicaoPipelineService service = new EleicaoPipelineService(
+        EleicaoPipelineService service = new EleicaoPipelineServiceImpl(
                 configInexistente,
                 null,
                 null,
