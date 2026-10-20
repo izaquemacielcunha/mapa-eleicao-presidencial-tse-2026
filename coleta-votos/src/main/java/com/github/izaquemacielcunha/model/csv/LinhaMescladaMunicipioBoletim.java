@@ -2,6 +2,7 @@ package com.github.izaquemacielcunha.model.csv;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import com.github.izaquemacielcunha.model.territorio.ChaveSecaoEleitoral;
 
 @JsonPropertyOrder({"SG_UF", "CD_MUNICIPIO", "NM_MUNICIPIO", "NR_ZONA", "NR_SECAO", "CANDIDATO", "QTD_VOTOS", "HASH", "BOLETIM_URNA"})
 public record LinhaMescladaMunicipioBoletim(

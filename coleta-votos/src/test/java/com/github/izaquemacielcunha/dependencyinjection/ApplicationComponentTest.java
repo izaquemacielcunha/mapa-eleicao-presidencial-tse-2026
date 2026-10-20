@@ -7,8 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import com.github.izaquemacielcunha.config.EleicaoConfig;
-import com.github.izaquemacielcunha.service.EleicaoPipelineService;
-import com.github.izaquemacielcunha.service.EleicaoPipelineServiceImpl;
+import com.github.izaquemacielcunha.service.pipeline.EleicaoPipelineService;
+import com.github.izaquemacielcunha.service.pipeline.EleicaoPipelineServiceImpl;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;

@@ -6,7 +6,7 @@ import dagger.BindsInstance;
 import dagger.Component;
 
 import com.github.izaquemacielcunha.config.EleicaoConfig;
-import com.github.izaquemacielcunha.service.EleicaoPipelineService;
+import com.github.izaquemacielcunha.service.pipeline.EleicaoPipelineService;
 
 /**
  * Componente central do Dagger para injeção de dependências da aplicação.

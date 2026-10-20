@@ -1,7 +1,7 @@
 package com.github.izaquemacielcunha.service.csv;
 
 import java.util.List;
-import com.github.izaquemacielcunha.model.Abrangencia;
+import com.github.izaquemacielcunha.model.territorio.Abrangencia;
 
 public interface CsvSecaoService {
     void exportarSecoesMunicipaisParaCsv(List<Abrangencia> abrangencias);

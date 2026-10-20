@@ -23,8 +23,8 @@ import tools.jackson.dataformat.csv.CsvSchema;
 import com.github.izaquemacielcunha.config.EleicaoConfig;
 import com.github.izaquemacielcunha.exception.EleicaoDataProcessingException;
 import com.github.izaquemacielcunha.model.csv.LinhaMunicipioEnriquecida;
-import com.github.izaquemacielcunha.model.urna.StatusSecaoEleitoral;
-import com.github.izaquemacielcunha.service.ExternalService;
+import com.github.izaquemacielcunha.model.territorio.StatusSecaoEleitoral;
+import com.github.izaquemacielcunha.service.tse.ExternalService;
 import com.github.izaquemacielcunha.service.tse.TseUrlBuilder;
 
 @Singleton

@@ -18,7 +18,7 @@ import tools.jackson.dataformat.csv.CsvSchema;
 
 import com.github.izaquemacielcunha.config.EleicaoConfig;
 import com.github.izaquemacielcunha.exception.EleicaoDataProcessingException;
-import com.github.izaquemacielcunha.model.Abrangencia;
+import com.github.izaquemacielcunha.model.territorio.Abrangencia;
 import com.github.izaquemacielcunha.model.csv.LinhaMunicipio;
 
 @Singleton

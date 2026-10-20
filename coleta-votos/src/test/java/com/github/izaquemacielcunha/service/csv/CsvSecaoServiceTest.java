@@ -6,10 +6,10 @@ import java.nio.file.Path;
 import java.util.List;
 
 import com.github.izaquemacielcunha.config.EleicaoConfig;
-import com.github.izaquemacielcunha.model.Abrangencia;
-import com.github.izaquemacielcunha.model.Municipio;
-import com.github.izaquemacielcunha.model.Secao;
-import com.github.izaquemacielcunha.model.Zona;
+import com.github.izaquemacielcunha.model.territorio.Abrangencia;
+import com.github.izaquemacielcunha.model.territorio.Municipio;
+import com.github.izaquemacielcunha.model.territorio.Secao;
+import com.github.izaquemacielcunha.model.territorio.Zona;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

@@ -15,11 +15,11 @@ import tools.jackson.dataformat.csv.CsvSchema;
 import com.github.izaquemacielcunha.config.EleicaoConfig;
 import com.github.izaquemacielcunha.model.csv.LinhaMunicipio;
 import com.github.izaquemacielcunha.model.csv.LinhaMunicipioEnriquecida;
+import com.github.izaquemacielcunha.model.territorio.StatusSecaoEleitoral;
 import com.github.izaquemacielcunha.model.urna.Arquivo;
 import com.github.izaquemacielcunha.model.urna.Hash;
 import com.github.izaquemacielcunha.model.urna.Metadados;
-import com.github.izaquemacielcunha.model.urna.StatusSecaoEleitoral;
-import com.github.izaquemacielcunha.service.ExternalService;
+import com.github.izaquemacielcunha.service.tse.ExternalService;
 import com.github.izaquemacielcunha.service.tse.TseUrlBuilder;
 
 import static org.junit.jupiter.api.Assertions.*;

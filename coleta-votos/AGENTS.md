@@ -67,6 +67,18 @@ java -jar target/coleta-votos.jar PR 75353 ./dados/eleitorado_local_votacao_2026
 
 ## 4. Regras Arquiteturais e Padrões de Código
 
+### Coesão e Simetria de Pacotes por Domínio
+
+* **Sem classes soltas nas raízes:** Nunca adicione classes diretamente sob `model/` ou `service/`. Todo modelo ou serviço deve residir em um subpacote temático bem delimitado.
+* **5 Domínios de Negócio canônicos:**
+  - `territorio`: Entidades e regras da hierarquia territorial/eleitoral (`Abrangencia`, `Municipio`, `Zona`, `Secao`, `ChaveSecaoEleitoral`, `StatusSecaoEleitoral`).
+  - `pipeline` (e `pipeline.checkpoint`): Orquestração de fases (`EleicaoPipelineService`), ciclo de vida de arquivos (`LimpezaArquivosTemporariosService`) e checkpoints (`PipelineCheckpointService`).
+  - `tse` (e `tse.asn1`): Integração HTTP (`ExternalService`, `TseUrlBuilder`) e contratos ASN.1 da urna.
+  - `urna` (e `urna.boletim`): Download, modelos e decodificação dos Boletins de Urna (`BoletimUrnaService`, `BoletimUrnaDownloadService`).
+  - `csv`: Modelos de linhas (`Linha*`) e serviços de I/O, enriquecimento e georreferenciamento (`Csv*Service`).
+* **Simetria `src/test/java`:** Mantenha estritamente a mesma árvore de pacotes em `src/test/java`, refletindo 1:1 a organização de `src/main/java`.
+* **Clean após refatoração estrutural:** Ao mover ou renomear classes no Dagger, execute sempre `mvn clean compile` para limpar os fontes gerados em `target/generated-sources/annotations`.
+
 ### Logging Padronizado (SLF4J + Logback)
 
 * **Declaração do Logger:** Toda classe de serviço que requer log deve utilizar estritamente o padrão da indústria SLF4J:
