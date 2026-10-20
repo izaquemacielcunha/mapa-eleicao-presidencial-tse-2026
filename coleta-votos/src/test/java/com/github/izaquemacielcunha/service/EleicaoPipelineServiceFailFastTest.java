@@ -19,7 +19,8 @@ class EleicaoPipelineServiceFailFastTest {
                 "3220",
                 "ele2026",
                 Path.of("temp-files-inexistente"),
-                Path.of("temp-files-inexistente/boletins")
+                Path.of("temp-files-inexistente/boletins"),
+                Path.of("dados-inexistentes/coords_zz.csv")
         );
 
         EleicaoPipelineService service = new EleicaoPipelineServiceImpl(

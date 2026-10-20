@@ -57,16 +57,18 @@ class EleicaoPipelineServiceTest {
     @Test
     @DisplayName("executar deve aplicar Fail-Fast quando o município não for encontrado no TSE")
     void deveAplicarFailFastQuandoMunicipioNaoEncontrado(@TempDir Path tempDir) throws Exception {
+        Path arquivoCoords = tempDir.resolve("coords-tse.csv");
+        Files.createFile(arquivoCoords);
+
         EleicaoConfig config = new EleicaoConfig(
                 "PR",
                 "99999",
                 "3220",
                 "ele2026",
                 tempDir,
-                tempDir.resolve("boletins")
+                tempDir.resolve("boletins"),
+                arquivoCoords
         );
-        // Cria arquivo de coordenadas para passar na primeira validação
-        Files.createFile(config.arquivoCoordenadasTse());
 
         when(tseUrlBuilder.buildUrlMunicipioConfig()).thenReturn("https://tse.jus.br/config.json");
         when(externalService.buscarConfiguracaoMunicipio(anyString(), anyString())).thenReturn(Optional.empty());
@@ -95,15 +97,18 @@ class EleicaoPipelineServiceTest {
     @Test
     @DisplayName("executar deve orquestrar sequencialmente as etapas do pipeline com sucesso")
     void deveOrquestrarComSucessoTodasAsFases(@TempDir Path tempDir) throws Exception {
+        Path arquivoCoords = tempDir.resolve("coords-tse.csv");
+        Files.createFile(arquivoCoords);
+
         EleicaoConfig config = new EleicaoConfig(
                 "PR",
                 "75353",
                 "3220",
                 "ele2026",
                 tempDir,
-                tempDir.resolve("boletins")
+                tempDir.resolve("boletins"),
+                arquivoCoords
         );
-        Files.createFile(config.arquivoCoordenadasTse());
 
         Municipio municipio = new Municipio("75353", "CURITIBA", List.of());
         when(tseUrlBuilder.buildUrlMunicipioConfig()).thenReturn("https://tse.jus.br/config.json");

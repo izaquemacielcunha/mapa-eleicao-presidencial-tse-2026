@@ -48,6 +48,18 @@ mvn clean compile
 mvn test
 ```
 
+* **Gerar o Fat JAR executável (`target/coleta-votos.jar`):**
+```bash
+mvn clean package
+```
+
+* **Executar a aplicação via JAR:**
+```bash
+java -jar target/coleta-votos.jar <UF> <CODIGO_MUNICIPIO> <CAMINHO_ARQUIVO_COORDENADAS>
+# Exemplo:
+java -jar target/coleta-votos.jar PR 75353 ./dados/eleitorado_local_votacao_2026_PR.csv
+```
+
 ---
 
 ## 4. Regras Arquiteturais e Padrões de Código
@@ -71,8 +83,8 @@ mvn test
 
 * **Padrão Interface + Implementação (`*Service` / `*ServiceImpl`):** Todos os serviços de domínio devem expor uma interface pública desacoplada e uma classe concreta implementadora com sufixo `Impl` anotada com `@Inject`. Consumidores e orquestradores devem depender exclusivamente das interfaces.
 * **Vínculo com `@Binds` no `ServiceModule`:** Novos serviços devem ser registrados no módulo abstrato `ServiceModule` via anotação `@Binds` e escopo `@Singleton`. Evite `@Provides` com instanciações manuais para classes com construtor `@Inject`.
-* **Configuração via CLI (`EleicaoConfig`):** O aplicativo recebe parâmetros de linha de comando (`UF` e `CODIGO_MUNICIPIO`) parseados e validados no record `EleicaoConfig.fromArgs(args)`, injetado no grafo via `@BindsInstance` na fábrica de `ApplicationComponent`.
-* **Caminhos Dinâmicos e `java.nio.file.Path`:** Centralize a resolução de diretórios de trabalho (`temp-files/`, diretório de boletins e nomes de CSVs gerados parametrizados pela UF) no `EleicaoConfig`. Use sempre `Path` e nunca espalhe caminhos fixos (*hardcoded*) nas classes de serviço.
+* **Configuração via CLI (`EleicaoConfig`):** O aplicativo recebe parâmetros de linha de comando obrigatórios (`UF`, `CODIGO_MUNICIPIO` e `CAMINHO_ARQUIVO_COORDENADAS`) parseados e validados no record `EleicaoConfig.fromArgs(args)`, injetado no grafo via `@BindsInstance` na fábrica de `ApplicationComponent`. Exemplo de uso: `java App PR 75353 ./dados/eleitorado_local_votacao_2026_PR.csv`.
+* **Caminhos Dinâmicos e `java.nio.file.Path`:** Centralize a resolução de diretórios de trabalho (`temp-files/`, diretório de boletins e nomes de CSVs gerados parametrizados pela UF) no `EleicaoConfig`. O arquivo de coordenadas do TSE é fornecido explicitamente como parâmetro de entrada, enquanto os arquivos temporários são gerados pelo próprio pipeline. Use sempre `Path` e nunca espalhe caminhos fixos (*hardcoded*) nas classes de serviço.
 * **Orquestrador Central:** O `App.java` deve ser mínimo (apenas instanciar a configuração, obter o componente Dagger e chamar `pipelineService.executar()`). A coordenação das fases pertence ao `EleicaoPipelineService`.
 
 ### Encapsulamento Rígido e Nomenclatura Expressiva
