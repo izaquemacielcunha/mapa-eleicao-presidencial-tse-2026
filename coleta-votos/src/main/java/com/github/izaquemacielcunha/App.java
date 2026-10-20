@@ -15,4 +15,4 @@ public class App {
         component.pipelineService().executar();
     }
 
-}// end of class
+}

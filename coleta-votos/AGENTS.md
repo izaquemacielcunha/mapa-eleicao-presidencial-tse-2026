@@ -158,3 +158,4 @@ java -jar target/coleta-votos.jar PR 75353 ./dados/eleitorado_local_votacao_2026
    - Peça permissão ao usuário antes de avançar para a próxima fase.
 6. **Preservação de integridade de dados eleitorais:** As chaves compostas para junção de coordenadas (`UF-MUNICIPIO-ZONA-SECAO`) exigem normalização numérica (eliminação de zeros à esquerda em zonas/seções ao comparar). Nunca altere essa lógica sem criar testes de regressão.
 7. **Não poluir a raiz:** Arquivos CSV intermediários ou de saída gerados durante a execução não devem ser comitados no controle de versão Git.
+8. **Código Limpo sem Javadoc/Comentários Redundantes:** O projeto preza por código autoexplicativo via nomenclatura expressiva. Não adicione comentários Javadoc (`/** ... */`) sobre classes, métodos, records ou interfaces, nem comentários residuais (ex: `// end of class`). Não altere os cabeçalhos de arquivos autogerados no pacote `model.tse.asn1`.

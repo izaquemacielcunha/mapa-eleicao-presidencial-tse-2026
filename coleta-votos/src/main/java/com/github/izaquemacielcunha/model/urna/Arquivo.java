@@ -7,4 +7,4 @@ public record Arquivo(
         String nome,
         @JsonProperty("tp")
         String tipo
-) { }// end of class
+) { }

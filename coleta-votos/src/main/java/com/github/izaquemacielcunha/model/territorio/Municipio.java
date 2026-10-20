@@ -8,4 +8,4 @@ public record Municipio(
         @JsonProperty("cd") String codigo,
         @JsonProperty("nm") String nome,
         @JsonProperty("zon") List<Zona> zonas
-) { }// end of class
+) { }

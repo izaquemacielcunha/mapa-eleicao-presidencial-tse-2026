@@ -13,4 +13,4 @@ public record LinhaMunicipioEnriquecida(
         @JsonProperty("HASH") String hash,
         @JsonProperty("BOLETIM_URNA") String boletimUrna
 
-) { }// end of class
+) { }

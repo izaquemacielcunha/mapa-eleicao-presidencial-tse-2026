@@ -8,4 +8,4 @@ public record LinhaBoletimUrna(
         @JsonProperty("CANDIDATO") String candidato,
         @JsonProperty("QTD_VOTOS") int votos,
         @JsonProperty("BOLETIM_URNA") String boletimUrna
-) { }// end of class
+) { }

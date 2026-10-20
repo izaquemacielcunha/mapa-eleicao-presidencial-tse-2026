@@ -1,8 +1,5 @@
 package com.github.izaquemacielcunha.model.urna;
 
-/**
- * Tipos de arquivos de boletim de urna disponibilizados pelo TSE.
- */
 public enum TipoArquivoUrna {
     BU("bu"),
     BUSA("busa");

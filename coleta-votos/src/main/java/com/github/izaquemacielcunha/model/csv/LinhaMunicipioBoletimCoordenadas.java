@@ -22,4 +22,4 @@ public record LinhaMunicipioBoletimCoordenadas(
         @JsonProperty("QTD_VOTOS") int votos,
         @JsonProperty("BOLETIM_URNA") String boletimUrna
 
-) { }// end of class
+) { }

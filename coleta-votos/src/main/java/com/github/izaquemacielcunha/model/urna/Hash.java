@@ -8,4 +8,4 @@ public record Hash(
         String hash,
         @JsonProperty("arq")
         List<Arquivo> arquivos
-) { }// end of class
+) { }

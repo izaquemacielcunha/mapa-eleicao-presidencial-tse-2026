@@ -1,10 +1,5 @@
 package com.github.izaquemacielcunha.model.territorio;
 
-/**
- * Interface que padroniza a geração da chave composta de identificação de seção eleitoral
- * no formato {@code UF-MUNICIPIO-ZONA-SECAO}, garantindo a eliminação de zeros à esquerda
- * para junção consistente entre diferentes fontes de dados (Carto e apuração do TSE).
- */
 public interface ChaveSecaoEleitoral {
 
     String unidadeFederativa();

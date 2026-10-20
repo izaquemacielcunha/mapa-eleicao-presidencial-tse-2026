@@ -9,9 +9,6 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
-/**
- * Representa o estado imutável do checkpoint do pipeline para persistência e validação de contexto.
- */
 public record EstadoCheckpoint(
         String uf,
         String codigoMunicipio,

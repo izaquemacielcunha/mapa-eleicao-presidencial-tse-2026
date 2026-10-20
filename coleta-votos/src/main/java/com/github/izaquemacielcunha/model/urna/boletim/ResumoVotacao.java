@@ -4,4 +4,4 @@ public record ResumoVotacao(
         String candidato,
         int votos,
         String boletimUrna
-) { }// end of class
+) { }

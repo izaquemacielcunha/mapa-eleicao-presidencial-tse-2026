@@ -2,9 +2,6 @@ package com.github.izaquemacielcunha.model.pipeline;
 
 import java.util.Objects;
 
-/**
- * Representa as etapas sequenciais do pipeline de coleta de votos do TSE.
- */
 public enum EtapaPipeline {
     ESTRUTURA_SECOES(1, "Estrutura de Seções"),
     ENRIQUECIMENTO_METADADOS(2, "Enriquecimento de Metadados"),
