@@ -26,8 +26,9 @@ O pipeline divide-se em 6 fases sequenciais orquestradas pelo `EleicaoPipelineSe
 - **Manipulação de Dados / Formatos:**
   - `asn1bean` (1.16.0) para decodificação binária de estruturas eleitorais do TSE.
   - `jackson-dataformat-csv` e `jackson-databind` (versão **3.2.3 / tools.jackson**).
-- **Resiliência de Rede:** Resilience4j RateLimiter para respeitar os limites de requisições à infraestrutura do TSE.
-- **Testes:** JUnit Jupiter 5.11.4 e Mockito 5.14.2.
+- **Logging:** SLF4J 2.x (`org.slf4j:slf4j-api:2.0.16`) com Logback (`ch.qos.logback:logback-classic:1.5.16`).
+- **Resiliência de Rede:** Resilience4j RateLimiter para respeitar os limites de requisições à infraestrutura do TSE (com exclusão transitiva do `slf4j-api` legado).
+- **Testes:** JUnit Jupiter 5.11.4 e Mockito 5.14.2 (com suporte a Java 25 via ByteBuddy agent).
 
 ---
 
@@ -51,49 +52,66 @@ mvn test
 
 ## 4. Regras Arquiteturais e Padrões de Código
 
+### Logging Padronizado (SLF4J + Logback)
+
+* **Declaração do Logger:** Toda classe de serviço que requer log deve utilizar estritamente o padrão da indústria SLF4J:
+  ```java
+  private static final Logger logger = LoggerFactory.getLogger(MinhaClasse.class);
+  ```
+* **Formatação e Saída no Console (`logback.xml`):**
+  - O appender de console deve direcionar sempre para `<target>System.out</target>`. **Nunca** permita saída para `System.err`, pois IDEs e terminais colorem todo o texto em vermelho.
+  - O padrão de formatação deve incluir timestamp completo, nível com cores ANSI (`%highlight([%-5level])`) e nome canônico completo da classe:
+    ```xml
+    <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %highlight([%-5level]) %logger - %msg%n</pattern>
+    ```
+* **Inicialização no `App.java` (Prevenção de Replay Warning):**
+  - Devido ao carregamento antecipado de classes de serviço estáticas pelo grafo de injeção do Dagger, chame explicitamente `LoggerFactory.getILoggerFactory();` logo na primeira linha do `App.main()` antes de instanciar o componente. Isso impede que o SLF4J emita o aviso de aviso/replay `SLF4J(W): A number of logging calls during initialization phase...`.
+
 ### Injeção de Dependência (Dagger) e Configuração CLI
 
 * **Configuração via CLI (`EleicaoConfig`):** O aplicativo recebe parâmetros de linha de comando (`UF` e `CODIGO_MUNICIPIO`) parseados e validados no record `EleicaoConfig.fromArgs(args)`.
 * **Injeção no Componente:** O `EleicaoConfig` é injetado no grafo Dagger através de `@Component.Factory` e `@BindsInstance` no `ApplicationComponent`. Qualquer novo parâmetro deve passar por essa fábrica.
-* **Caminhos Dinâmicos:** Centralize a resolução de diretórios de trabalho (`temp-files/`, diretório de boletins e nomes de CSVs gerados parametrizados pela UF) no `EleicaoConfig`. Nunca espalhe caminhos fixos (hardcoded) nas classes de serviço.
+* **Caminhos Dinâmicos e `java.nio.file.Path`:** Centralize a resolução de diretórios de trabalho (`temp-files/`, diretório de boletins e nomes de CSVs gerados parametrizados pela UF) no `EleicaoConfig`. Use sempre `Path` e nunca espalhe caminhos fixos (*hardcoded*) nas classes de serviço.
 * **Orquestrador Central:** O `App.java` deve ser mínimo (apenas instanciar a configuração, obter o componente Dagger e chamar `pipelineService.executar()`). A coordenação das fases pertence ao `EleicaoPipelineService`.
 
 ### Modelagem de Dados e Tipagem
 
 * **Uso estrito de Records:** Todos os modelos de transferência de dados, modelos de linhas CSV (`LinhaBoletimUrna`, `LinhaMescladaMunicipioBoletim`, etc.) e entidades imutáveis **devem** ser declarados como `record`.
-* **Enums de Domínio:** Valores de domínio com significado fixo do TSE (como tipos de voto `TipoVotoBoletim` e cargos `CargoConstitucionalTse`) devem usar `enum` tipado com suporte a `switch` expressions modernas, evitando *magic numbers* ou strings literais espalhadas.
+* **Chave Composta e Enums de Domínio:**
+  - A interface `ChaveSecaoEleitoral` centraliza o cálculo da chave `UF-MUNICIPIO-ZONA-SECAO` com normalização numérica (sem zeros à esquerda).
+  - Valores com significado fixo do TSE devem usar enums ou constantes dedicadas (`TipoArquivoUrna`, `StatusSecaoEleitoral`), eliminando strings mágicas.
 * **Modelos ASN.1:** As classes dentro do pacote `model.tse.asn1` representam especificações estritas do protocolo eleitoral do TSE. Não altere tipos primitivos ou identificadores sem consultar a especificação ASN.1 correspondente.
 
 ### Manipulação de CSV, I/O e Coordenadas Geográficas
 
 * **Streaming com Jackson 3.x:** Utilize as APIs de streaming do Jackson 3.x (`CsvMapper`, `MappingIterator`, `SequenceWriter`) para lidar com grandes volumes de votos sem esgotar a memória heap (`OutOfMemoryError`).
+* **Exceções do Jackson 3.x:** No Jackson 3.x, operações de streaming lançam `JacksonException` (unchecked). Empregue o tratamento adequado convertendo para `EleicaoDataProcessingException`.
 * **Delimitadores e Charsets:** Os arquivos de coordenadas do TSE usam delimitador `;` e codificação `ISO-8859-1`, enquanto os arquivos intermediários e o dataset final gerado para o Carto usam delimitador `,` e `UTF-8`.
 * **Formatação de Latitude e Longitude (KISS):**
   - Para ferramentas GIS e Carto.com, as coordenadas devem estar no formato decimal padrão com ponto (ex: `-25.4759288` e `-49.1950276`).
   - O dado bruto do TSE vem com vírgula (`-25,4759288`), portanto um simples `replace(",", ".")` é suficiente.
-  - **Atenção ao efeito de visualização local (Excel/Locale pt-BR):** Softwares de planilha locais podem interpretar o ponto `.` como separador de milhar, dando a impressão equivocada de que o CSV possui números mal formatados (como `-2.543.908.512`). A saída do CSV não deve ser modificada por causa de particularidades de formatação regional de softwares de terceiros.
 * **Fechamento de Recursos:** Sempre feche fluxos de arquivos utilizando declarações `try-with-resources`.
 
 ### Resiliência, Tráfego Externo e Concorrência
 
 * **Controle de Concorrência vs. RateLimiter:**
-  - O Resilience4j RateLimiter do projeto está configurado com limites rígidos de taxa e timeout de fila de espera (ex: 5 segundos).
-  - **Cuidado com Virtual Threads:** Nunca dispare milhares de Virtual Threads desreguladas (`Thread.ofVirtual()` irrestrito) para tarefas protegidas por RateLimiter, pois a fila de espera será sobrecarregada, gerando `RequestNotPermitted`.
-  - Mantenha um paralelismo controlado e previsível (como `parallelStream()` ou controle explícito via semáforos) compatível com o throughput permitido.
-* **Tolerância a HTTP 404 (Urnas Agregadas / Inoperantes):** O `ExternalService` deve tratar HTTP 404 como `Optional.empty()` (e nunca estourar exceção que aborte o processo). O serviço enriquecedor marca o boletim como `"inoperante/agregada"` e o pipeline segue com as demais seções.
+  - O Resilience4j RateLimiter do projeto está configurado com limites rígidos de taxa e timeout de fila de espera.
+  - Nunca dispare milhares de Virtual Threads desreguladas (`Thread.ofVirtual()` irrestrito) para tarefas protegidas por RateLimiter, pois a fila de espera será sobrecarregada, gerando `RequestNotPermitted`. Mantenha paralelismo controlado (ex: `parallelStream()`).
+* **Tolerância a HTTP 404 (Urnas Agregadas / Inoperantes):** O `ExternalService` deve tratar HTTP 404 como `Optional.empty()` (e nunca estourar exceção que aborte o processo). O serviço enriquecedor marca o boletim como `StatusSecaoEleitoral.STATUS_INOPERANTE_AGREGADA` e o pipeline segue com as demais seções.
 
 ---
 
 ## 5. Regras para o Agente de IA
 
 1. **Sem quebra de compatibilidade com Jackson 3.x:** Observe que este projeto usa o pacote `tools.jackson` (versão 3.x), e **não** o tradicional `com.fasterxml.jackson`. Mantenha as importações consistentes.
-2. **Zero Novas Dependências:** Não adicione novas dependências ao `pom.xml` a menos que haja solicitação explícita do usuário. Utilize a biblioteca padrão do Java 25 e as ferramentas já instaladas.
-3. **Fluxo Passo a Passo com Validação:**
+2. **Java 25 e Mockito no Surefire:** O `maven-surefire-plugin` deve sempre conter a configuração de JVM `<argLine>-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading</argLine>`. Não remova este argumento, pois ele é obrigatório para que o Mockito/ByteBuddy funcione no Java 25.
+3. **Resolução de Conflitos no POM:** A dependência `resilience4j-ratelimiter` traz transitivamente uma versão legada do `slf4j-api` (1.7.x). Ela deve ser sempre excluída no `pom.xml` para não causar conflitos com o `slf4j-api` 2.x do Logback.
+4. **Formatação de URLs no `TseUrlBuilder` em Testes:**
+   - O `TseUrlBuilder.buildUrlSecaoMetadados()` formata zonas e seções com 4 dígitos usando `%04d` (ex: a seção `10` vira `s0010` na URL).
+   - Ao escrever mocks com Mockito em testes unitários, utilize a própria instância de `tseUrlBuilder.buildUrlSecaoMetadados(linha)` ou atente-se ao formato `s%04d` para não gerar divergências de matcher no Mockito.
+5. **Fluxo Passo a Passo com Validação:**
    - Execute uma etapa por vez.
    - Valide sempre com `mvn clean compile && mvn test` ao término de cada modificação.
    - Peça permissão ao usuário antes de avançar para a próxima fase.
-4. **Foco no Código e Princípio KISS:**
-   - Não complique soluções com algoritmos desnecessários quando uma manipulação direta resolver o problema.
-   - Evite inspecionar arquivos de dados pesados (como CSVs gigantes do TSE) via comandos de shell quando o foco da tarefa for a regra de negócio ou lógica de código.
-5. **Preservação de integridade de dados eleitorais:** As chaves compostas para junção de coordenadas (`UF-MUNICIPIO-ZONA-SECAO`) exigem normalização numérica (eliminação de zeros à esquerda em zonas/seções ao comparar). Nunca altere essa lógica sem criar testes de regressão.
-6. **Não poluir a raiz:** Arquivos CSV intermediários ou de saída gerados durante a execução não devem ser comitados no controle de versão Git.
+6. **Preservação de integridade de dados eleitorais:** As chaves compostas para junção de coordenadas (`UF-MUNICIPIO-ZONA-SECAO`) exigem normalização numérica (eliminação de zeros à esquerda em zonas/seções ao comparar). Nunca altere essa lógica sem criar testes de regressão.
+7. **Não poluir a raiz:** Arquivos CSV intermediários ou de saída gerados durante a execução não devem ser comitados no controle de versão Git.

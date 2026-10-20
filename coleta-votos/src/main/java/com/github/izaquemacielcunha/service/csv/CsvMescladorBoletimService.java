@@ -2,46 +2,75 @@ package com.github.izaquemacielcunha.service.csv;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tools.jackson.databind.MappingIterator;
 import tools.jackson.databind.SequenceWriter;
 import tools.jackson.dataformat.csv.CsvMapper;
 import tools.jackson.dataformat.csv.CsvSchema;
 
+import com.github.izaquemacielcunha.config.EleicaoConfig;
 import com.github.izaquemacielcunha.model.csv.LinhaBoletimUrna;
 import com.github.izaquemacielcunha.model.csv.LinhaMescladaMunicipioBoletim;
 import com.github.izaquemacielcunha.model.csv.LinhaMunicipioEnriquecida;
 
 @Singleton
 public class CsvMescladorBoletimService {
-
-    private static final File DEFAULT_ARQUIVO_ENRIQUECIDO = new File("temp-files/arquivo-enriquecido.csv");
-    private static final File DEFAULT_ARQUIVO_VOTOS = new File("temp-files/arquivo-boletim-urna.csv");
-    private static final File DEFAULT_ARQUIVO_SAIDA = new File("temp-files/resultado-mesclado.csv");
+    private static final Logger logger = LoggerFactory.getLogger(CsvMescladorBoletimService.class);
 
     private final CsvMapper csvMapper;
+    private final EleicaoConfig config;
+
+    public CsvMescladorBoletimService(CsvMapper csvMapper) {
+        this(csvMapper, EleicaoConfig.padrao());
+    }
 
     @Inject
-    public CsvMescladorBoletimService(CsvMapper csvMapper) {
-        this.csvMapper = csvMapper;
+    public CsvMescladorBoletimService(CsvMapper csvMapper, EleicaoConfig config) {
+        this.csvMapper = Objects.requireNonNull(csvMapper, "CsvMapper não pode ser nulo");
+        this.config = Objects.requireNonNull(config, "EleicaoConfig não pode ser nulo");
     }
 
-    public void mesclar() throws IOException {
-        mesclar(DEFAULT_ARQUIVO_ENRIQUECIDO, DEFAULT_ARQUIVO_VOTOS, DEFAULT_ARQUIVO_SAIDA);
+    public int mesclar() throws IOException {
+        return mesclar(config.arquivoEnriquecidoCsv(), config.arquivoBoletimUrnaCsv(), config.arquivoResultadoMescladoCsv());
     }
 
-    public void mesclar(File fileUrnas, File fileVotos, File outputFile) throws IOException {
+    public int mesclar(Path fileUrnas, Path fileVotos, Path outputFile) throws IOException {
+        Objects.requireNonNull(fileUrnas, "Arquivo de urnas não pode ser nulo");
+        Objects.requireNonNull(fileVotos, "Arquivo de votos não pode ser nulo");
+        Objects.requireNonNull(outputFile, "Arquivo de saída não pode ser nulo");
+
+        return mesclar(fileUrnas.toFile(), fileVotos.toFile(), outputFile.toFile());
+    }
+
+    public int mesclar(File fileUrnas, File fileVotos, File outputFile) throws IOException {
+        Objects.requireNonNull(fileUrnas, "Arquivo de urnas não pode ser nulo");
+        Objects.requireNonNull(fileVotos, "Arquivo de votos não pode ser nulo");
+        Objects.requireNonNull(outputFile, "Arquivo de saída não pode ser nulo");
+
+        Instant inicio = Instant.now();
+
+        File parentDir = outputFile.getParentFile();
+        if (parentDir != null && !parentDir.exists()) {
+            parentDir.mkdirs();
+        }
+
         CsvSchema schemaUrnas = csvMapper.schemaFor(LinhaMunicipioEnriquecida.class).withHeader();
         CsvSchema schemaVotos = csvMapper.schemaFor(LinhaBoletimUrna.class).withHeader();
         CsvSchema schemaMesclado = csvMapper.schemaFor(LinhaMescladaMunicipioBoletim.class).withHeader();
 
         Map<String, LinhaMunicipioEnriquecida> urnasMap = carregarMapaUrnas(fileUrnas, schemaUrnas);
 
+        int totalMesclados = 0;
         try (MappingIterator<LinhaBoletimUrna> itVotos = csvMapper.readerFor(LinhaBoletimUrna.class)
                 .with(schemaVotos)
                 .readValues(fileVotos);
@@ -52,9 +81,17 @@ public class CsvMescladorBoletimService {
                 LinhaMunicipioEnriquecida municipio = urnasMap.get(voto.boletimUrna());
                 LinhaMescladaMunicipioBoletim linhaMesclada = criarLinhaMesclada(municipio, voto);
                 writer.write(linhaMesclada);
+                totalMesclados++;
             }
             writer.flush();
         }
+
+        Duration decorrido = Duration.between(inicio, Instant.now());
+        logger.info(
+                "Mesclagem de votos concluída em {} ms. Total de registros mesclados: {}.",
+                decorrido.toMillis(), totalMesclados);
+
+        return totalMesclados;
     }
 
     private Map<String, LinhaMunicipioEnriquecida> carregarMapaUrnas(File fileUrnas, CsvSchema schemaUrnas) throws IOException {

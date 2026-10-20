@@ -8,10 +8,19 @@ import com.github.izaquemacielcunha.model.urna.Metadados;
 
 public interface ExternalService {
 
-    Optional<Municipio> callMunicipioConfig(String url, String codigoMunicipal) throws Exception;
+    Optional<Municipio> buscarConfiguracaoMunicipio(String url, String codigoMunicipal);
 
-    Optional<Metadados> callZonaSecaoInfos(String url) throws Exception;
+    Optional<Metadados> buscarMetadadosSecao(String url);
 
-    Optional<Path> baixarArquivoBoletimUrnaDat(String url, Path diretorioDestino) throws Exception;
+    Optional<Path> baixarArquivoBoletimUrnaDat(String url, Path diretorioDestino);
 
+    @Deprecated
+    default Optional<Municipio> callMunicipioConfig(String url, String codigoMunicipal) {
+        return buscarConfiguracaoMunicipio(url, codigoMunicipal);
+    }
+
+    @Deprecated
+    default Optional<Metadados> callZonaSecaoInfos(String url) {
+        return buscarMetadadosSecao(url);
+    }
 }

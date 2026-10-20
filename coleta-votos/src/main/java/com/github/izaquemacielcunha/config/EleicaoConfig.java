@@ -1,6 +1,5 @@
 package com.github.izaquemacielcunha.config;
 
-import java.io.File;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -57,27 +56,27 @@ public record EleicaoConfig(
         return criar(DEFAULT_UF, DEFAULT_COD_MUNICIPIO);
     }
 
-    public File arquivoTempCsv() {
-        return diretorioTemp.resolve("temp.csv").toFile();
+    public Path arquivoTempCsv() {
+        return diretorioTemp.resolve("temp.csv");
     }
 
-    public File arquivoEnriquecidoCsv() {
-        return diretorioTemp.resolve("arquivo-enriquecido.csv").toFile();
+    public Path arquivoEnriquecidoCsv() {
+        return diretorioTemp.resolve("arquivo-enriquecido.csv");
     }
 
-    public File arquivoBoletimUrnaCsv() {
-        return diretorioTemp.resolve("arquivo-boletim-urna.csv").toFile();
+    public Path arquivoBoletimUrnaCsv() {
+        return diretorioTemp.resolve("arquivo-boletim-urna.csv");
     }
 
-    public File arquivoResultadoMescladoCsv() {
-        return diretorioTemp.resolve("resultado-mesclado.csv").toFile();
+    public Path arquivoResultadoMescladoCsv() {
+        return diretorioTemp.resolve("resultado-mesclado.csv");
     }
 
     public Path arquivoCoordenadasTse() {
-        return diretorioTemp.resolve(String.format("eleitorado_local_votacao_2026_%s.csv", uf));
+        return diretorioTemp.resolve(String.format("eleitorado_local_votacao_2026_%s.csv", uf.toUpperCase()));
     }
 
-    public File arquivoCartoFinal() {
-        return Path.of(String.format("carto-dataset-final-eleic-presi-2026-1-turn-%s.csv", uf.toLowerCase())).toFile();
+    public Path arquivoCartoFinal() {
+        return Path.of(String.format("carto-dataset-final-eleic-presi-2026-1-turn-%s.csv", uf.toLowerCase()));
     }
 }

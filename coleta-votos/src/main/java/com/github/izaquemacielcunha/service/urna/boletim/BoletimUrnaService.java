@@ -9,12 +9,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import com.github.izaquemacielcunha.exception.EleicaoDataProcessingException;
 import com.github.izaquemacielcunha.model.tse.asn1.EntidadeBoletimUrna;
 import com.github.izaquemacielcunha.model.tse.asn1.ResultadoVotacaoPorEleicao;
 import com.github.izaquemacielcunha.model.tse.asn1.ResultadoVotacao;
@@ -28,12 +32,19 @@ import com.github.izaquemacielcunha.model.urna.boletim.TipoVotoBoletim;
 
 @Singleton
 public class BoletimUrnaService {
+    private static final Logger logger = LoggerFactory.getLogger(BoletimUrnaService.class);
     private static final String VOTO_NULO_PABLO_MARCAL = "28";
 
     @Inject
     public BoletimUrnaService() {}
 
-    public List<ResumoVotacao> processarDiretorio(String nomeDiretorio) {
+    public List<ResumoVotacao> processarBoletins(Path diretorio) {
+        Objects.requireNonNull(diretorio, "Diretório de boletins não pode ser nulo");
+        return processarBoletins(diretorio.toString());
+    }
+
+    public List<ResumoVotacao> processarBoletins(String nomeDiretorio) {
+        Objects.requireNonNull(nomeDiretorio, "Nome do diretório não pode ser nulo");
         List<String> listaBoletins = listaArquivosBoletinsUrnas(nomeDiretorio);
         return listaBoletins.parallelStream()
                 .flatMap(boletim -> {
@@ -41,13 +52,18 @@ public class BoletimUrnaService {
                         String idBoletim = boletim.substring(boletim.lastIndexOf(File.separatorChar) + 1);
                         return extrairResumoVotacao(boletim, idBoletim).stream();
                     } catch (Exception e) {
-                        throw new RuntimeException("Erro ao extrair resumo do boletim: " + boletim, e);
+                        logger.error("Erro ao extrair resumo do boletim: {}", boletim, e);
+                        throw new EleicaoDataProcessingException("Erro ao extrair resumo do boletim: " + boletim, e);
                     }
                 })
                 .toList();
     }
 
-    public List<ResumoVotacao> extrairResumoVotacao(String pathBoletimUrna, String idBoletimUrna) throws Exception {
+    public List<ResumoVotacao> processarDiretorio(String nomeDiretorio) {
+        return processarBoletins(nomeDiretorio);
+    }
+
+    public List<ResumoVotacao> extrairResumoVotacao(String pathBoletimUrna, String idBoletimUrna) {
         Optional<EntidadeBoletimUrna> boletimUrna = desenveloparBoletimUrna(pathBoletimUrna);
         if (boletimUrna.isPresent()) {
             return obterEleicoes(boletimUrna.get())
@@ -73,7 +89,8 @@ public class BoletimUrnaService {
                     .map(Path::toString)
                     .toList();
         } catch (IOException e) {
-            throw new RuntimeException("Erro ao listar arquivos do diretório: " + nomeDiretorio, e);
+            logger.error("Erro ao listar arquivos do diretório: {}", nomeDiretorio, e);
+            throw new EleicaoDataProcessingException("Erro ao listar arquivos do diretório: " + nomeDiretorio, e);
         }
     }
 
@@ -131,7 +148,7 @@ public class BoletimUrnaService {
         return collection == null ? Stream.empty() : collection.stream();
     }
 
-    private Optional<EntidadeBoletimUrna> desenveloparBoletimUrna(String filePath) throws Exception {
+    private Optional<EntidadeBoletimUrna> desenveloparBoletimUrna(String filePath) {
         if (filePath == null || filePath.trim().isEmpty() || !filePath.endsWith(".dat")) {
             return Optional.empty();
         }
@@ -139,7 +156,7 @@ public class BoletimUrnaService {
         File arquivoDat = new File(filePath);
 
         if (!arquivoDat.exists()) {
-            System.err.println("Arquivo não encontrado: " + arquivoDat.getAbsolutePath());
+            logger.warn("Arquivo .dat ausente ou inacessível: {}", arquivoDat.getAbsolutePath());
             return Optional.empty();
         }
 
@@ -151,13 +168,15 @@ public class BoletimUrnaService {
             try (ByteArrayInputStream buStream = new ByteArrayInputStream(envelope.getConteudo().value)) {
                 boletimUrna.decode(buStream);
                 return Optional.of(boletimUrna);
+            } catch (Exception ex) {
+                logger.error("Corrupção ou falha na estrutura ASN.1 do Boletim de Urna: {}", filePath, ex);
+                throw new EleicaoDataProcessingException("Erro ao decodificar conteúdo ASN.1 do Boletim de Urna: " + filePath, ex);
             }
-            catch (Exception ex) {
-                throw new RuntimeException(ex);
-            }
-        }
-        catch (Exception ex) {
-            throw new RuntimeException(ex);
+        } catch (EleicaoDataProcessingException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            logger.error("Erro ao ler ou decodificar envelope ASN.1: {}", filePath, ex);
+            throw new EleicaoDataProcessingException("Erro ao ler ou decodificar envelope ASN.1: " + filePath, ex);
         }
     }
 
