@@ -167,14 +167,14 @@ O arquivo gerado (`carto-dataset-final-eleic-presi-2026-1-turn-<uf>.csv`) possui
 | `BOLETIM_URNA` | Nome do arquivo `.dat` de origem | `o03220pr7403900480001-bu.dat` |
 
 ### Uso do arquivo `query-carto.sql`
-O repositório inclui o arquivo [`query-carto.sql`](./query-carto.sql) com consultas SQL prontas para serem utilizadas no **Carto.com / BigQuery** após importar os CSVs gerados:
+O repositório inclui o arquivo [`query-carto.sql`](./coleta-votos/query-carto.sql) com consultas SQL prontas para serem utilizadas no **Carto.com / BigQuery** após importar os CSVs gerados:
 - Agrupa todas as seções por **local de votação** (`nm_municipio`, `nm_local_votacao`, `nm_bairro`).
 - Transforma as linhas de candidatos em colunas (`votos_22`, `votos_13`, `votos_branco`, `votos_nulo`, etc.).
 - Une tabelas de múltiplas capitais (`UNION ALL`) e calcula automaticamente o candidato **vencedor** em cada local de votação.
 
 > [!WARNING]
 > **Atenção — Inconsistências nas Coordenadas Oficiais do TSE:**
-> Conforme documentado nos comentários ao final do arquivo [`query-carto.sql`](./query-carto.sql), a planilha oficial de locais de votação fornecida pelo TSE apresenta **coordenadas geográficas inconsistentes, deslocadas ou ausentes** para determinados locais de votação (especialmente unidades prisionais/Fundação CASA, votos em trânsito e algumas escolas em estados como `SP`, `RS`, `BA`, `PE`, `PB`, `CE`, `PA`, `AP`, `RR` e `MT`), fazendo com que pontos apareçam fora dos limites do município ou em locais incorretos no mapa:
+> Conforme documentado nos comentários ao final do arquivo [`query-carto.sql`](./coleta-votos/query-carto.sql), a planilha oficial de locais de votação fornecida pelo TSE apresenta **coordenadas geográficas inconsistentes, deslocadas ou ausentes** para determinados locais de votação (especialmente unidades prisionais/Fundação CASA, votos em trânsito e algumas escolas em estados como `SP`, `RS`, `BA`, `PE`, `PB`, `CE`, `PA`, `AP`, `RR` e `MT`), fazendo com que pontos apareçam fora dos limites do município ou em locais incorretos no mapa:
 >
 > ![Exemplo de inconsistência de coordenadas do TSE no mapa](./docs/imgs/inconsistencia-coordenadas-tse.png)
 
