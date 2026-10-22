@@ -1,8 +1,10 @@
-# 🗳️ Coleta de Votos TSE 2026 (`coleta-votos`)
+# 🗳️ Mapa da Eleição Presidencial TSE 2026 (`coleta-votos`)
+
+> 🗺️ **[Acesse aqui o Mapa Interativo da Eleição Presidencial 2026 no Carto.com](https://clausa.app.carto.com/map/b8d37847-d7fa-456f-9dfa-c23a47daac99)**
 
 Ferramenta de **ETL (Extract, Transform, Load)** em linha de comando desenvolvida em **Java 25** para extrair, decodificar, enriquecer e georreferenciar os votos de Boletins de Urna (BUs) da eleição presidencial diretamente da API oficial do **Tribunal Superior Eleitoral (TSE)**.
 
-Ao final da execução, o sistema gera um dataset consolidado em CSV (`carto-dataset-final-eleic-presi-2026-1-turn-<uf>.csv`), cruzando os votos apurados em cada seção com suas coordenadas geográficas (`LATITUDE` e `LONGITUDE`), bairro e local de votação, pronto para visualização no **Carto.com**.
+Ao final da execução, o sistema gera um dataset consolidado em CSV (`carto-dataset-final-eleic-presi-2026-1-turn-<uf>.csv`), cruzando os votos apurados em cada seção com suas coordenadas geográficas (`LATITUDE` e `LONGITUDE`), bairro e local de votação, pronto para visualização no **[Carto.com](https://clausa.app.carto.com/map/b8d37847-d7fa-456f-9dfa-c23a47daac99)**.
 
 ---
 
@@ -77,11 +79,10 @@ O `EleicaoPipelineService` coordena a execução sequencial das 7 etapas:
 
 ## 🛡️ Sistema de Checkpoint e Retomada Automática
 
-Coletar dados de municípios grandes (como capitais) exige milhares de requisições HTTP ao TSE. Caso ocorra queda de internet, *timeout* ou interrupção manual no meio do processo, o software **não precisa recomeçar do zero**:
+Se a execução for interrompida por falha de rede ou cancelamento manual, o pipeline retoma de onde parou sem refazer o trabalho concluído:
 
-- **Checkpoint de Fases (`PipelineCheckpointService`):** Ao final de cada etapa (Fases 1 a 6), o progresso é salvo atomicamente no arquivo `temp-files/checkpoint-status.json`. Na próxima execução para o mesmo município, o pipeline verifica quais etapas já constam como concluídas e valida se os respectivos arquivos intermediários existem no disco com tamanho maior que zero, pulando as fases já prontas.
-- **Reaproveitamento de Boletins Baixados (Fase 3):** Se o download dos arquivos `.dat` falhar na metade (ex: baixou 3.000 de 5.000 urnas), ao rodar novamente o `BoletimUrnaDownloadService` verifica os arquivos `.dat` íntegros já salvos em `temp-files/boletins-urnas/` e baixa apenas os 2.000 restantes.
-- **Invalidação Automática de Contexto:** Se você iniciar uma execução para outro município ou UF diferente do que estava salvo no `checkpoint-status.json`, o checkpoint anterior é descartado automaticamente.
+- **Checkpoint de Fases (`temp-files/checkpoint-status.json`):** Salva o estado ao final de cada etapa (Fases 1 a 6) e pula as fases já concluídas na próxima execução do mesmo município (reiniciando automaticamente se a UF ou município mudar).
+- **Reaproveitamento de Downloads:** Na Fase 3, arquivos `.dat` íntegros já existentes em `temp-files/boletins-urnas/` não são baixados novamente.
 
 ---
 
@@ -147,7 +148,7 @@ java -jar target/coleta-votos.jar PR 75353 ./dados/eleitorado_local_votacao_2026
 
 ---
 
-## 📊 Estrutura do CSV Final e Consultas no Carto (`query-carto.sql`)
+## 📊 Estrutura do CSV Final e Consulta no Carto (`query-carto.sql`)
 
 O arquivo gerado (`carto-dataset-final-eleic-presi-2026-1-turn-<uf>.csv`) possui codificação `UTF-8`, separador `,` e as seguintes colunas:
 
@@ -167,14 +168,14 @@ O arquivo gerado (`carto-dataset-final-eleic-presi-2026-1-turn-<uf>.csv`) possui
 | `BOLETIM_URNA` | Nome do arquivo `.dat` de origem | `o03220pr7403900480001-bu.dat` |
 
 ### Uso do arquivo `query-carto.sql`
-O repositório inclui o arquivo [`query-carto.sql`](./coleta-votos/query-carto.sql) com consultas SQL prontas para serem utilizadas no **Carto.com / BigQuery** após importar os CSVs gerados:
-- Agrupa todas as seções por **local de votação** (`nm_municipio`, `nm_local_votacao`, `nm_bairro`).
-- Transforma as linhas de candidatos em colunas (`votos_22`, `votos_13`, `votos_branco`, `votos_nulo`, etc.).
-- Une tabelas de múltiplas capitais (`UNION ALL`) e calcula automaticamente o candidato **vencedor** em cada local de votação.
+O repositório inclui o arquivo [`query-carto.sql`](./coleta-votos/query-carto.sql) com a consulta SQL utilizada no **Workflow do Carto.com / BigQuery** após importar os CSVs gerados (resultado publicado no [Mapa Interativo no Carto.com](https://clausa.app.carto.com/map/b8d37847-d7fa-456f-9dfa-c23a47daac99)):
+- Unifica automaticamente as tabelas de todas as UFs por meio de *wildcard table* (`FROM \`dataset-name-*\``), extraindo a sigla do estado via `UPPER(_TABLE_SUFFIX) AS uf`.
+- Agrupa todas as seções por **local de votação** (`uf`, `nm_municipio`, `nm_local_votacao`, `nm_bairro`).
+- Transforma as linhas de candidatos em colunas (`votos_22`, `votos_13`, `votos_branco`, `votos_nulo`, etc.) e calcula automaticamente o candidato **vencedor** em cada local de votação.
 
 > [!WARNING]
 > **Atenção — Inconsistências nas Coordenadas Oficiais do TSE:**
-> Conforme documentado nos comentários ao final do arquivo [`query-carto.sql`](./coleta-votos/query-carto.sql), a planilha oficial de locais de votação fornecida pelo TSE apresenta **coordenadas geográficas inconsistentes, deslocadas ou ausentes** para determinados locais de votação (especialmente unidades prisionais/Fundação CASA, votos em trânsito e algumas escolas em estados como `SP`, `RS`, `BA`, `PE`, `PB`, `CE`, `PA`, `AP`, `RR` e `MT`), fazendo com que pontos apareçam fora dos limites do município ou em locais incorretos no mapa:
+> A planilha oficial de locais de votação fornecida pelo TSE apresenta **coordenadas geográficas inconsistentes, deslocadas ou ausentes** para determinados locais de votação (especialmente unidades prisionais/Fundação CASA, votos em trânsito e algumas escolas em estados como `AP`, `CE`, `MT`, `PA`, `PB`, `PE`, `RR`, `RS` e `SP`), fazendo com que pontos apareçam fora dos limites do município ou em locais incorretos no mapa. Os comentários ao final do arquivo [`query-carto.sql`](./coleta-votos/query-carto.sql) registram as **correções manuais de coordenadas** aplicadas para esses locais:
 >
 > ![Exemplo de inconsistência de coordenadas do TSE no mapa](./docs/imgs/inconsistencia-coordenadas-tse.png)
 
@@ -334,3 +335,9 @@ Com as classes geradas (ou utilizando um parser ASN.1 equivalente na sua linguag
 2. Decodifique esses bytes usando a estrutura `EntidadeBoletimUrna`.
 3. Percorra `resultadosVotacaoPorEleicao` $\rightarrow$ `resultadosVotacao` $\rightarrow$ `totaisVotosCargo`, filtrando onde `codigoCargo.cargoConstitucional == 1` (**Presidente**).
 4. Em `votosVotaveis`, leia `tipoVoto` (`1` = Nominal, `2` = Branco, `3` = Nulo), `quantidadeVotos` e `identificacaoVotavel.codigo` (número do candidato).
+
+---
+
+## 🤝 Contribuições, Melhorias e Licença
+
+Reconheço que este código possui espaço para melhorias, otimizações e novas funcionalidades. Sinta-se totalmente livre para fazer um **fork** deste repositório, adaptar, evoluir ou utilizar o projeto como base para seus próprios estudos e análises (distribuído sob a licença [MIT](./LICENSE)).
